@@ -4,7 +4,7 @@
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_LCD_MODULE
 
-#ifdef USE_BUZZER_ON_TOUCH
+#ifdef USE_BUZZER
 #include "Buzzer.h"
 #endif
 
@@ -24,7 +24,7 @@ void ButtonOnClick(const PushButton& Sender, void* UserData) // пришло с�
 {
   UNUSED(Sender);
 
-  #ifdef USE_BUZZER_ON_TOUCH
+  #ifdef USE_BUZZER
   Buzzer.buzz();
   #endif
   

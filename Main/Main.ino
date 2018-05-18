@@ -150,7 +150,7 @@
 #include "TFTModule.h"
 #endif
 
-#ifdef USE_BUZZER_ON_TOUCH
+#ifdef USE_BUZZER
 #include "Buzzer.h"
 #endif
 
@@ -384,7 +384,7 @@ void setup()
 
   START_LOG(7);
 
-  #ifdef USE_BUZZER_ON_TOUCH
+  #ifdef USE_BUZZER
   Buzzer.begin();
   #endif
 
@@ -569,7 +569,7 @@ void setup()
   #endif
 
   // пискнем при старте, если есть баззер
-  #ifdef USE_BUZZER_ON_TOUCH
+  #ifdef USE_BUZZER
   Buzzer.buzz();
   #endif
 

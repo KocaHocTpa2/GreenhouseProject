@@ -6,7 +6,7 @@
 
 #ifdef USE_TFT_MODULE
 
-#ifdef USE_BUZZER_ON_TOUCH
+#ifdef USE_BUZZER
 #include "Buzzer.h"
 #endif
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -16,7 +16,7 @@ void BuzzerOn(int btn)
 {
   if(btn != -1)
   {
-    #ifdef USE_BUZZER_ON_TOUCH
+    #ifdef USE_BUZZER
     Buzzer.buzz();
     #endif
   }
