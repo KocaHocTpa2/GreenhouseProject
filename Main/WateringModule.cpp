@@ -819,7 +819,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
         String which = command.GetArg(0);
         //which.toUpperCase();
 
-        if(which == WATER_SETTINGS_COMMAND)
+        if(which == WATER_SETTINGS_COMMAND) // CTSET=WATER|T_SETT|WateringOption|WateringDays|WateringTime|StartTime|TurnOnPump|wateringSensorIndex|wateringStopBorder
         {
           if(argsCount > 5)
           {
@@ -875,7 +875,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
               // может быть как ручным, так и автоматическим.              
               
               PublishSingleton.Flags.Status = true;
-              PublishSingleton = WATER_SETTINGS_COMMAND; 
+              PublishSingleton = which; 
               PublishSingleton << PARAM_DELIMITER << REG_SUCC;
           } // argsCount > 3
           else
@@ -886,7 +886,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
           
         } // WATER_SETTINGS_COMMAND
         else
-        if(which == WATER_CHANNEL_SETTINGS) // настройки канала CTSET=WATER|CH_SETT|IDX|WateringDays|WateringTime|StartTime
+        if(which == WATER_CHANNEL_SETTINGS) // настройки канала CTSET=WATER|CH_SETT|IDX|WateringDays|WateringTime|StartTime|wateringSensorIndex|wateringStopBorder
         {
            if(argsCount > 4)
            {
@@ -916,7 +916,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
                   settings->SetChannelWateringStopBorder(channelIdx,wateringStopBorder);
                   
                   PublishSingleton.Flags.Status = true;
-                  PublishSingleton = WATER_CHANNEL_SETTINGS; 
+                  PublishSingleton = which; 
                   PublishSingleton << PARAM_DELIMITER << (command.GetArg(1)) << PARAM_DELIMITER << REG_SUCC;
                  
                 }
@@ -936,6 +936,96 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
            }
         }
         else
+        if(which == F("DURATION_ALL")) // установить продолжительность полива для всех каналов, CTSET=WATER|DURATION_ALL|Minutes (0-65535)
+        {
+          #if WATER_RELAYS_COUNT > 0
+            if(argsCount > 1)
+            {
+                GlobalSettings* settings = MainController->GetSettings();
+                uint16_t wateringTime =(uint16_t) atoi(command.GetArg(1));
+                settings->SetWateringTime(wateringTime);
+                PublishSingleton.Flags.Status = true;
+                PublishSingleton = which; 
+                PublishSingleton << PARAM_DELIMITER << REG_SUCC;
+            }
+            else
+            {
+              PublishSingleton = PARAMS_MISSED; 
+            }
+          #else
+            PublishSingleton = UNKNOWN_COMMAND;
+          #endif
+          
+        } // DURATION_ALL
+        else
+        if(which == F("DURATION_CH")) // установить продолжительность полива для канала, CTSET=WATER|DURATION_CH|Idx|Minutes (0-65535)
+        {
+          #if WATER_RELAYS_COUNT > 0
+            if(argsCount > 2)
+            {
+                GlobalSettings* settings = MainController->GetSettings();
+                uint8_t channelIdx = (uint8_t) atoi(command.GetArg(1));
+                uint16_t wateringTime =(uint16_t) atoi(command.GetArg(2));
+                settings->SetChannelWateringTime(channelIdx,wateringTime);
+                PublishSingleton.Flags.Status = true;
+                PublishSingleton = which; 
+                PublishSingleton << PARAM_DELIMITER << channelIdx << PARAM_DELIMITER << REG_SUCC;
+            }
+            else
+            {
+              PublishSingleton = PARAMS_MISSED; 
+            }
+          #else
+            PublishSingleton = UNKNOWN_COMMAND;
+          #endif
+          
+        } // DURATION_CH
+        else
+        if(which == F("TIME_ALL")) // установить время начала полива для всех каналов, CTSET=WATER|TIME_ALL|Minutes (from 00:00)
+        {
+          #if WATER_RELAYS_COUNT > 0
+            if(argsCount > 1)
+            {
+                GlobalSettings* settings = MainController->GetSettings();
+                uint16_t startWateringTime =(uint16_t) atoi(command.GetArg(1));
+                settings->SetStartWateringTime(startWateringTime);
+                PublishSingleton.Flags.Status = true;
+                PublishSingleton = which; 
+                PublishSingleton << PARAM_DELIMITER << REG_SUCC;
+            }
+            else
+            {
+              PublishSingleton = PARAMS_MISSED; 
+            }
+          #else
+            PublishSingleton = UNKNOWN_COMMAND;
+          #endif
+          
+        } // TIME_ALL
+        else
+        if(which == F("TIME_CH")) // установить время начала полива для канала, CTSET=WATER|TIME_CH|Idx|Minutes (from 00:00)
+        {
+          #if WATER_RELAYS_COUNT > 0
+            if(argsCount > 2)
+            {
+                GlobalSettings* settings = MainController->GetSettings();
+                uint8_t channelIdx = (uint8_t) atoi(command.GetArg(1));
+                uint16_t startWateringTime =(uint16_t) atoi(command.GetArg(2));
+                settings->SetChannelStartWateringTime(channelIdx,startWateringTime);
+                PublishSingleton.Flags.Status = true;
+                PublishSingleton = which; 
+                PublishSingleton << PARAM_DELIMITER << channelIdx << PARAM_DELIMITER << REG_SUCC;
+            }
+            else
+            {
+              PublishSingleton = PARAMS_MISSED; 
+            }
+          #else
+            PublishSingleton = UNKNOWN_COMMAND;
+          #endif
+          
+        } // TIME_CH        
+        else
         if(which == WORK_MODE) // CTSET=WATER|MODE|AUTO, CTSET=WATER|MODE|MANUAL
         {
            // попросили установить режим работы
@@ -953,7 +1043,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
            }
 
               PublishSingleton.Flags.Status = true;
-              PublishSingleton = WORK_MODE; 
+              PublishSingleton = which; 
               PublishSingleton << PARAM_DELIMITER << param;
 
               
@@ -1002,7 +1092,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
            } // command from user
         
           PublishSingleton.Flags.Status = true;
-          PublishSingleton = STATE_ON;
+          PublishSingleton = which;
           if(argsCount > 1)
           {
             PublishSingleton << PARAM_DELIMITER;
@@ -1046,7 +1136,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
            } // command from user 
 
           PublishSingleton.Flags.Status = true;
-          PublishSingleton = STATE_OFF;
+          PublishSingleton = which;
           if(argsCount > 1)
           {
             PublishSingleton << PARAM_DELIMITER;
