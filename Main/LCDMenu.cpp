@@ -511,8 +511,8 @@ void IdlePageMenuItem::draw(DrawContext* dc)
 
         cur_top += HINT_FONT_HEIGHT + 6;
         
-        DS3231Clock rtc = MainController->GetClock();
-        DS3231Time tm = rtc.getTime();
+        RealtimeClock rtc = MainController->GetClock();
+        RTCTime tm = rtc.getTime();
 
         /*static */char dt_buff[20] = {0};
         sprintf_P(dt_buff,(const char*) F("%02d.%02d.%d %02d:%02d"), tm.dayOfMonth, tm.month, tm.year, tm.hour, tm.minute);

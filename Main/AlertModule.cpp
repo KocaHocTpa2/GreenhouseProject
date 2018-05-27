@@ -1182,8 +1182,8 @@ void AlertModule::Update(uint16_t dt)
     return;
      
 #ifdef USE_DS3231_REALTIME_CLOCK
-  DS3231Clock rtc = MainController->GetClock();
-  DS3231Time tm = rtc.getTime();
+  RealtimeClock rtc = MainController->GetClock();
+  RTCTime tm = rtc.getTime();
 #endif
 
 

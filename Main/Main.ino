@@ -548,8 +548,8 @@ void setup()
 
   #ifdef USE_DS3231_REALTIME_CLOCK
   
-   DS3231Clock rtc = controller.GetClock();
-   DS3231Time tm = rtc.getTime();
+   RealtimeClock rtc = controller.GetClock();
+   RTCTime tm = rtc.getTime();
 
    Serial.print(F(", "));
    Serial.print(rtc.getDayOfWeekStr(tm));

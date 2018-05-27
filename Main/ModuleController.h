@@ -11,7 +11,7 @@
 
 
 #ifdef USE_DS3231_REALTIME_CLOCK
-#include "DS3231Support.h"
+#include "RTCSupport.h"
 #endif
 
 #ifdef USE_LOG_MODULE
@@ -59,7 +59,7 @@ class ModuleController
   HTTPQueryProvider* httpQueryProviders[2];
 
 #ifdef USE_DS3231_REALTIME_CLOCK
-  DS3231Clock _rtc; // часы реального времени
+  RealtimeClock _rtc; // часы реального времени
 #endif
 
 #ifdef USE_LOG_MODULE
@@ -98,7 +98,7 @@ public:
   }
   #ifdef USE_DS3231_REALTIME_CLOCK
   // модуль реального времени
-  DS3231Clock& GetClock();
+  RealtimeClock& GetClock();
   #endif
 
   #ifdef USE_LOG_MODULE

@@ -60,8 +60,8 @@ bool PeriodicTimer::IsActive()
     return en;
   #else
     // модуль часов реального времени есть в прошивке, проверяем маску дней недели
-    DS3231Clock watch =  MainController->GetClock();
-    DS3231Time t =   watch.getTime();
+    RealtimeClock watch =  MainController->GetClock();
+    RTCTime t =   watch.getTime();
     return en && (Settings.DayMaskAndEnable & (1 << (t.dayOfWeek-1)));
   #endif
 }

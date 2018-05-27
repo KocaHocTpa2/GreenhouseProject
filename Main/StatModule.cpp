@@ -125,8 +125,8 @@ bool  StatModule::ExecCommand(const Command& command, bool wantAnswer)
      #ifdef USE_DS3231_REALTIME_CLOCK   
         else if(t == CURDATETIME_COMMAND)
         {
-           DS3231Clock rtc = MainController->GetClock();
-           DS3231Time tm = rtc.getTime();
+           RealtimeClock rtc = MainController->GetClock();
+           RTCTime tm = rtc.getTime();
            if(wantAnswer) 
            {
              PublishSingleton = rtc.getDayOfWeekStr(tm);

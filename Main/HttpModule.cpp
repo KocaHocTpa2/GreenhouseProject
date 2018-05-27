@@ -536,8 +536,8 @@ void HttpModule::OnAskForData(String* data)
         int addedLength = 0;
         #ifdef USE_DS3231_REALTIME_CLOCK
           addedLength = 6;
-          DS3231Clock rtc = MainController->GetClock();
-          DS3231Time tm = rtc.getTime();
+          RealtimeClock rtc = MainController->GetClock();
+          RTCTime tm = rtc.getTime();
           String dateStr = rtc.getDateStr(tm);
           String timeStr = rtc.getTimeStr(tm);
 
@@ -625,8 +625,8 @@ void HttpModule::OnAskForData(String* data)
 
         #ifdef USE_DS3231_REALTIME_CLOCK
           addedLength = 6;
-          DS3231Clock rtc = MainController->GetClock();
-          DS3231Time tm = rtc.getTime();
+          RealtimeClock rtc = MainController->GetClock();
+          RTCTime tm = rtc.getTime();
           String dateStr = rtc.getDateStr(tm);
           String timeStr = rtc.getTimeStr(tm);
 

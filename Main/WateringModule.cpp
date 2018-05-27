@@ -187,7 +187,7 @@ bool WateringChannel::IsActive()
   return flags.isON;
 }
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void WateringChannel::Update(uint16_t _dt,WateringWorkMode currentWorkMode, const DS3231Time& currentTime, int8_t savedDayOfWeek)
+void WateringChannel::Update(uint16_t _dt,WateringWorkMode currentWorkMode, const RTCTime& currentTime, int8_t savedDayOfWeek)
 {
   #ifdef USE_DS3231_REALTIME_CLOCK
 
@@ -308,8 +308,8 @@ void WateringChannel::DoLoadState(byte addressOffset)
 #ifdef USE_DS3231_REALTIME_CLOCK
 
   // читать время полива на канале имеет смысл только, когда модуль часов реального времени есть в прошивке
-    DS3231Clock watch =  MainController->GetClock();
-    DS3231Time t =   watch.getTime();
+    RealtimeClock watch =  MainController->GetClock();
+    RTCTime t =   watch.getTime();
     uint8_t today = t.dayOfWeek; // текущий день недели
 
     flags.lastSavedStateMinute = t.minute;
@@ -360,8 +360,8 @@ void WateringChannel::DoSaveState(byte addressOffset,unsigned long wateringTimer
 #ifdef USE_DS3231_REALTIME_CLOCK
 
   // писать время полива на канале имеет смысл только, когда модуль часов реального времени есть в прошивке
-    DS3231Clock watch =  MainController->GetClock();
-    DS3231Time t =   watch.getTime();
+    RealtimeClock watch =  MainController->GetClock();
+    RTCTime t =   watch.getTime();
     uint8_t today = t.dayOfWeek; // текущий день недели 
     
     WTR_LOG(F("[WTR] - save state for channel "));
@@ -609,8 +609,8 @@ void WateringModule::Setup()
 
   #ifdef USE_DS3231_REALTIME_CLOCK
 
-    DS3231Clock watch =  MainController->GetClock();
-    DS3231Time t =   watch.getTime();
+    RealtimeClock watch =  MainController->GetClock();
+    RTCTime t =   watch.getTime();
 
     lastDOW = t.dayOfWeek; // запоминаем прошлый день недели
     currentDOW = t.dayOfWeek; // запоминаем текущий день недели
@@ -749,12 +749,12 @@ void WateringModule::Update(uint16_t dt)
     SAVE_STATUS(WATER_STATUS_BIT, anyChannelActive ? 1 : 0); // сохраняем состояние полива
     SAVE_STATUS(WATER_MODE_BIT,flags.workMode == wwmAutomatic ? 1 : 0); // сохраняем режим работы полива
 
-    DS3231Time t;
+    RTCTime t;
     
     #ifdef USE_DS3231_REALTIME_CLOCK
 
       // обновлять каналы имеет смысл только при наличии часов реального времени
-      DS3231Clock watch =  MainController->GetClock();
+      RealtimeClock watch =  MainController->GetClock();
       t =  watch.getTime(); // получаем текущее время
 
     if(currentDOW != t.dayOfWeek)

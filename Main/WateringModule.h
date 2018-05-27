@@ -4,7 +4,7 @@
 #include "AbstractModule.h"
 #include "Globals.h"
 #include "InteropStream.h"
-#include "DS3231Support.h"
+#include "RTCSupport.h"
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_WATERING_MODULE
 
@@ -62,7 +62,7 @@ class WateringChannel
     bool IsChanged(); // изменилось ли состояние канала после вызова On() или Off() ?
     bool IsActive(); // активен ли полив на канале ?
 
-    void Update(uint16_t dt,WateringWorkMode currentWorkMode, const DS3231Time& currentTime, int8_t savedDayOfWeek); // обновляет состояние канала
+    void Update(uint16_t dt,WateringWorkMode currentWorkMode, const RTCTime& currentTime, int8_t savedDayOfWeek); // обновляет состояние канала
 };
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #endif // WATER_RELAYS_COUNT > 0

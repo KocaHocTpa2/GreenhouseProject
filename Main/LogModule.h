@@ -2,7 +2,7 @@
 #define _LOG_MODULE_H
 #include "AbstractModule.h"
 #include "Globals.h"
-#include "DS3231Support.h"
+#include "RTCSupport.h"
 
 #if TARGET_BOARD == STM32_BOARD
 #include <SdFatSTM32.h>
@@ -38,11 +38,11 @@ class LogModule : public AbstractModule // модуль логгирования
 #ifdef LOG_ACTIONS_ENABLED
   int8_t lastActionsDOW;
   void EnsureActionsFileCreated(); // убеждаемся, что файл с записями текущих действий создан
-  void CreateActionsFile(const DS3231Time& tm); // создаёт новый файл лога с записью действий
+  void CreateActionsFile(const RTCTime& tm); // создаёт новый файл лога с записью действий
 #endif
 
-  void CreateNewLogFile(const DS3231Time& tm);
-  void GatherLogInfo(const DS3231Time& tm); 
+  void CreateNewLogFile(const RTCTime& tm);
+  void GatherLogInfo(const RTCTime& tm); 
 #ifdef ADD_LOG_HEADER  
   void TryAddFileHeader();
 #endif  

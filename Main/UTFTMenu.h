@@ -6,7 +6,7 @@
 #ifdef USE_TFT_MODULE
 
 #include "TinyVector.h"
-#include "DS3231Support.h"
+#include "RTCSupport.h"
 
 #if TARGET_BOARD == STM32_BOARD
 #include <UTFTSTM32.h>
@@ -280,10 +280,10 @@ class TFTSettingsScreen : public AbstractTFTScreen
       
       String strDay, strMonth, strYear, strHour, strMinute, strSecond;
 
-      DS3231Time controllerTime;
+      RTCTime controllerTime;
       bool controllerTimeChanged;
 
-      void updateTimeButtons(DS3231Time& tm, bool redraw);      
+      void updateTimeButtons(RTCTime& tm, bool redraw);      
       
       uint16_t stepVal(int8_t dir, uint16_t minVal,uint16_t maxVal, int16_t val);
       String addLeadingZero(int val);

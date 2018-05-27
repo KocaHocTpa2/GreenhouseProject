@@ -640,8 +640,8 @@ void NextionModule::updateDisplayData()
 void NextionModule::updateTime()
 {
     #ifdef USE_DS3231_REALTIME_CLOCK
-      DS3231Clock rtc = MainController->GetClock();
-      DS3231Time controllerTime = rtc.getTime();
+      RealtimeClock rtc = MainController->GetClock();
+      RTCTime controllerTime = rtc.getTime();
       
       NextionText currentTimeField("curTime");
       currentTimeField.bind(nextion);

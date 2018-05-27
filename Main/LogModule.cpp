@@ -41,7 +41,7 @@ void LogModule::Setup()
  }
  //--------------------------------------------------------------------------------------------------------------------------------
 #ifdef LOG_ACTIONS_ENABLED 
-void LogModule::CreateActionsFile(const DS3231Time& tm)
+void LogModule::CreateActionsFile(const RTCTime& tm)
 {  
   if(!MainController->HasSDCard())//hasSD)
     return;
@@ -119,7 +119,7 @@ void LogModule::WriteAction(const LogAction& action)
 
 #ifdef USE_DS3231_REALTIME_CLOCK
 
-  DS3231Time tm = /*rtc*/MainController->GetClock().getTime();
+  RTCTime tm = /*rtc*/MainController->GetClock().getTime();
   
   String hhmm;
   if(tm.hour < 10)
@@ -156,7 +156,7 @@ void LogModule::EnsureActionsFileCreated()
 {
 #ifdef USE_DS3231_REALTIME_CLOCK
   
-  DS3231Time tm = /*rtc*/MainController->GetClock().getTime();
+  RTCTime tm = /*rtc*/MainController->GetClock().getTime();
 
   if(tm.dayOfWeek != lastActionsDOW)
   {
@@ -172,7 +172,7 @@ void LogModule::EnsureActionsFileCreated()
 }
 #endif
 //--------------------------------------------------------------------------------------------------------------------------------
-void LogModule::CreateNewLogFile(const DS3231Time& tm)
+void LogModule::CreateNewLogFile(const RTCTime& tm)
 {
   if(!MainController->HasSDCard())//hasSD)
     return;
@@ -408,7 +408,7 @@ void LogModule::TryAddFileHeader()
 }
 #endif
 //--------------------------------------------------------------------------------------------------------------------------------
-void LogModule::GatherLogInfo(const DS3231Time& tm)
+void LogModule::GatherLogInfo(const RTCTime& tm)
 {
   // собираем информацию в лог
   
@@ -618,7 +618,7 @@ void LogModule::Update(uint16_t dt)
     return;
   }
 #ifdef USE_DS3231_REALTIME_CLOCK
-  DS3231Time tm = /*rtc*/MainController->GetClock().getTime();
+  RTCTime tm = /*rtc*/MainController->GetClock().getTime();
   if(lastDOW != tm.dayOfWeek) // наступил следующий день недели, надо создать новый лог-файл
   {
    lastDOW = tm.dayOfWeek;
@@ -705,7 +705,7 @@ if(MainController->HasSDCard())//hasSD)
             } // if(fRead)
 
             #ifdef USE_DS3231_REALTIME_CLOCK
-                DS3231Time tm = MainController->GetClock().getTime();
+                RTCTime tm = MainController->GetClock().getTime();
                 CreateNewLogFile(tm); // создаём новый файл
             #endif
             
@@ -772,7 +772,7 @@ if(MainController->HasSDCard())//hasSD)
             } // if(fRead)
 
             #if defined(USE_DS3231_REALTIME_CLOCK) && defined(LOG_ACTIONS_ENABLED)
-                DS3231Time tm = MainController->GetClock().getTime();
+                RTCTime tm = MainController->GetClock().getTime();
                 CreateActionsFile(tm); // создаём новый файл действий
             #endif
             

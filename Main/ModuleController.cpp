@@ -14,8 +14,8 @@ SdFat SDFat;
 #ifdef USE_DS3231_REALTIME_CLOCK
 void setFileDateTime(uint16_t* date, uint16_t* time) 
 {
-  DS3231Clock rtc = MainController->GetClock();
-  DS3231Time tm = rtc.getTime();
+  RealtimeClock rtc = MainController->GetClock();
+  RTCTime tm = rtc.getTime();
 
   // return date using FAT_DATE macro to format fields
   *date = FAT_DATE(tm.year, tm. month, tm. dayOfMonth);
@@ -175,7 +175,7 @@ ModuleController::ModuleController() : cParser(NULL)
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_DS3231_REALTIME_CLOCK
-DS3231Clock& ModuleController::GetClock()
+RealtimeClock& ModuleController::GetClock()
 {
   return _rtc;
 }
@@ -206,7 +206,13 @@ void ModuleController::Setup()
   MainController = this;
 
 #ifdef USE_DS3231_REALTIME_CLOCK
-_rtc.begin(DS3231_WIRE_NUMBER);
+
+  #ifdef USE_INTERNAL_CLOCK
+    _rtc.begin(INTERNAL_CLOCK_OSC);
+  #else
+    _rtc.begin(DS3231_WIRE_NUMBER);
+  #endif
+
 SdFile::dateTimeCallback(setFileDateTime);
 #endif
 

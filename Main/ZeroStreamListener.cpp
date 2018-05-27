@@ -80,7 +80,7 @@ void ZeroStreamListener::Update(uint16_t dt)
   {
     dsTimer = 0;
   // получаем температуру модуля реального времени
-    DS3231Clock rtc = MainController->GetClock();
+    RealtimeClock rtc = MainController->GetClock();
     Temperature t = rtc.getTemperature();
 
     // convert to Fahrenheit if needed
@@ -758,7 +758,7 @@ bool  ZeroStreamListener::ExecCommand(const Command& command, bool wantAnswer)
                dow -= 7;             
 
             
-             DS3231Clock cl = MainController->GetClock();
+             RealtimeClock cl = MainController->GetClock();
              cl.setTime(sec.toInt(),minute.toInt(),hour.toInt(),dow,dayint,monthint,yearint);
 
              PublishSingleton.Flags.Status = true;

@@ -915,7 +915,7 @@ String TFTSettingsScreen::addLeadingZero(int val)
   return result;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void TFTSettingsScreen::updateTimeButtons(DS3231Time& tm, bool redraw)
+void TFTSettingsScreen::updateTimeButtons(RTCTime& tm, bool redraw)
 {
   
     strDay = addLeadingZero(tm.dayOfMonth);
@@ -965,7 +965,7 @@ void TFTSettingsScreen::drawValueInBox(TFTMenu* menuManager, TFTInfoBox* box, ui
 void TFTSettingsScreen::onActivate(TFTMenu* menuManager)
 {
   #ifdef USE_DS3231_REALTIME_CLOCK
-  DS3231Clock rtc = MainController->GetClock();
+  RealtimeClock rtc = MainController->GetClock();
   controllerTime = rtc.getTime();  
   updateTimeButtons(controllerTime,false);
   controllerTimeChanged = false;
@@ -986,7 +986,7 @@ void TFTSettingsScreen::update(TFTMenu* menuManager,uint16_t dt)
       if(controllerTimeChanged)
       {
         controllerTimeChanged = false;
-        DS3231Clock rtc = MainController->GetClock();
+        RealtimeClock rtc = MainController->GetClock();
         rtc.setTime(controllerTime);
       }
       #endif
@@ -1202,7 +1202,7 @@ void TFTSettingsScreen::update(TFTMenu* menuManager,uint16_t dt)
         {
           controllerTimeChangedTimer = millis();
           controllerTimeChanged = false;
-          DS3231Clock rtc = MainController->GetClock();
+          RealtimeClock rtc = MainController->GetClock();
           rtc.setTime(controllerTime);
         }
      }
@@ -1240,7 +1240,7 @@ void TFTSettingsScreen::draw(TFTMenu* menuManager)
   dc->setColor(INFO_BOX_CAPTION_COLOR);
   menuManager->getRusPrinter()->print(TFT_CURRENTTIME_CAPTION,30,255);  
 
-  DS3231Clock rtc = MainController->GetClock();
+  RealtimeClock rtc = MainController->GetClock();
   controllerTime = rtc.getTime();  
   updateTimeButtons(controllerTime,true);
     
@@ -1324,8 +1324,8 @@ TFTIdleScreen::~TFTIdleScreen()
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void TFTIdleScreen::DrawDateTime(TFTMenu* menuManager)
 {
-    DS3231Clock rtc = MainController->GetClock();
-    DS3231Time tm = rtc.getTime();
+    RealtimeClock rtc = MainController->GetClock();
+    RTCTime tm = rtc.getTime();
 
   if(lastMinute == tm.minute)
     return;
