@@ -20,7 +20,26 @@ void PeriodicTimer::On()
   if(flags.lastPinState != TIMER_ON)
   {
     flags.lastPinState = TIMER_ON;
-    WORK_STATUS.PinWrite(Settings.Pin,TIMER_ON);
+    //WORK_STATUS.PinWrite(Settings.Pin,TIMER_ON);
+    
+   #if TIMERS_DRIVE_MODE == DRIVE_DIRECT
+    
+      WORK_STATUS.PinWrite(Settings.Pin,TIMER_ON);
+      
+    #elif TIMERS_DRIVE_MODE == DRIVE_MCP23S17
+        #if defined(USE_MCP23S17_EXTENDER) && COUNT_OF_MCP23S17_EXTENDERS > 0
+        
+          WORK_STATUS.MCP_SPI_PinWrite(TIMERS_MCP23S17_ADDRESS,Settings.Pin,TIMER_ON);
+          
+        #endif
+    #elif TIMERS_DRIVE_MODE == DRIVE_MCP23017
+        #if defined(USE_MCP23017_EXTENDER) && COUNT_OF_MCP23017_EXTENDERS > 0
+        
+          WORK_STATUS.MCP_I2C_PinWrite(TIMERS_MCP23017_ADDRESS,Settings.Pin,TIMER_ON);
+          
+        #endif
+    #endif
+    
   }
      
 }
@@ -33,7 +52,25 @@ void PeriodicTimer::Off()
   if(flags.lastPinState != TIMER_OFF)
   {
     flags.lastPinState = TIMER_OFF;
-    WORK_STATUS.PinWrite(Settings.Pin,TIMER_OFF);
+    //WORK_STATUS.PinWrite(Settings.Pin,TIMER_OFF);
+
+   #if TIMERS_DRIVE_MODE == DRIVE_DIRECT
+    
+      WORK_STATUS.PinWrite(Settings.Pin,TIMER_OFF);
+      
+    #elif TIMERS_DRIVE_MODE == DRIVE_MCP23S17
+        #if defined(USE_MCP23S17_EXTENDER) && COUNT_OF_MCP23S17_EXTENDERS > 0
+        
+          WORK_STATUS.MCP_SPI_PinWrite(TIMERS_MCP23S17_ADDRESS,Settings.Pin,TIMER_OFF);
+          
+        #endif
+    #elif TIMERS_DRIVE_MODE == DRIVE_MCP23017
+        #if defined(USE_MCP23017_EXTENDER) && COUNT_OF_MCP23017_EXTENDERS > 0
+        
+          WORK_STATUS.MCP_I2C_PinWrite(TIMERS_MCP23017_ADDRESS,Settings.Pin,TIMER_OFF);
+          
+        #endif
+    #endif    
   }
      
 }
@@ -42,7 +79,25 @@ void PeriodicTimer::Init()
 {
   if(Settings.Pin)
   {
-    WORK_STATUS.PinMode(Settings.Pin, OUTPUT);
+   // WORK_STATUS.PinMode(Settings.Pin, OUTPUT);
+   
+   #if TIMERS_DRIVE_MODE == DRIVE_DIRECT
+    
+      WORK_STATUS.PinMode(Settings.Pin, OUTPUT);
+      
+    #elif TIMERS_DRIVE_MODE == DRIVE_MCP23S17
+        #if defined(USE_MCP23S17_EXTENDER) && COUNT_OF_MCP23S17_EXTENDERS > 0
+        
+           WORK_STATUS.MCP_SPI_PinMode(TIMERS_MCP23S17_ADDRESS,Settings.Pin,OUTPUT);
+          
+        #endif
+    #elif TIMERS_DRIVE_MODE == DRIVE_MCP23017
+        #if defined(USE_MCP23017_EXTENDER) && COUNT_OF_MCP23017_EXTENDERS > 0
+        
+          WORK_STATUS.MCP_I2C_PinMode(TIMERS_MCP23017_ADDRESS,Settings.Pin,OUTPUT);
+          
+        #endif
+    #endif        
     
     if(IsActive())
       On();
@@ -145,8 +200,6 @@ void TimerModule::SaveTimers()
        {
         MemWrite(addr++,*pB++);
        }
-      // EEPROM.put(addr,timers[i].Settings);
-     // addr += sizeof(PeriodicTimerSettings);   
    } // for
 }
 //--------------------------------------------------------------------------------------------------------------------------------
