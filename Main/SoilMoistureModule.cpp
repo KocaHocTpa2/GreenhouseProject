@@ -50,8 +50,8 @@ void SoilMoistureModule::Setup()
       WORK_STATUS.PinMode(SOIL_MOISTURE_SENSORS_ARRAY[i].pin, INPUT, false);
       if(SOIL_MOISTURE_SENSORS_ARRAY[i].type == FREQUENCY_SOIL_MOISTURE)
       {
-        pinMode(SOIL_MOISTURE_SENSORS_ARRAY[i].pin,INPUT);
-        digitalWrite(SOIL_MOISTURE_SENSORS_ARRAY[i].pin,HIGH);
+        WORK_STATUS.PinMode(SOIL_MOISTURE_SENSORS_ARRAY[i].pin,INPUT);
+        WORK_STATUS.PinWrite(SOIL_MOISTURE_SENSORS_ARRAY[i].pin,HIGH);
       }
       State.AddState(StateSoilMoisture,i); // добавляем датчики влажности почвы
     } // for

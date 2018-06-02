@@ -146,8 +146,8 @@ bool  PinModule::ExecCommand(const Command& command, bool wantAnswer)
       {
            if(!PinExist(pinNumber)) // ещё нет такого пина для слежения
            {
-              pinMode(pinNumber,INPUT); // читаем из пина его текущее состояние
-              pinLevel = digitalRead(pinNumber);
+              WORK_STATUS.PinMode(pinNumber,INPUT); // читаем из пина его текущее состояние
+              pinLevel = WORK_STATUS.PinRead(pinNumber);
               pinLevel = pinLevel == HIGH ? LOW : HIGH;
            }
            else // пин уже существует для слежения

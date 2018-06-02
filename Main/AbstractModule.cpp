@@ -291,6 +291,20 @@ void WorkStatus::SaveWaterChannelState(byte channel, byte state)
     State.WaterChannelsState |= (1 << channel);
 }
 //--------------------------------------------------------------------------------------------------------------------------------
+byte WorkStatus::PinRead(byte pin)
+{
+  if(pin < VIRTUAL_PIN_START_NUMBER)
+    return digitalRead(pin);
+
+  uint8_t byte_num = pin/8;
+  uint8_t bit_num = pin%8;
+
+  if(byte_num > 15) // не помещаемся
+    return LOW;  
+
+  return (State.PinsState[byte_num] & (1 << bit_num)) ? HIGH : LOW;
+}
+//--------------------------------------------------------------------------------------------------------------------------------
 void WorkStatus::PinWrite(byte pin, byte level)
 {
   if(pin < VIRTUAL_PIN_START_NUMBER) // если у нас номер пина меньше, чем номер первого виртуального пина, то - пишем в него

@@ -369,6 +369,7 @@ public:
   // если последний парааметр равен false - то с пином ничего не делается, просто его режим копируется в карту занятости.
   void PinMode(byte pinNumber,byte mode, bool setMode=true); 
   void PinWrite(byte pin, byte level); // пишет в пин состояние, заодно копируя его в слепок состояния контроллера
+  byte PinRead(byte pin);
 
   #if defined(USE_MCP23S17_EXTENDER) && COUNT_OF_MCP23S17_EXTENDERS > 0
     // запись в каналы MCP23S17

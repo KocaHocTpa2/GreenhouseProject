@@ -219,8 +219,8 @@ SdFile::dateTimeCallback(setFileDateTime);
 
 #if  defined(USE_WIFI_MODULE) || defined(USE_LOG_MODULE) || defined(USE_SMS_MODULE) || (defined(SENSORS_SETTINGS_ON_SD_ENABLED) && defined(USE_LCD_MODULE))
 
-  pinMode(SDCARD_CS_PIN,OUTPUT);
-  digitalWrite(SDCARD_CS_PIN,HIGH);
+  WORK_STATUS.PinMode(SDCARD_CS_PIN,OUTPUT);
+  WORK_STATUS.PinWrite(SDCARD_CS_PIN,HIGH);
 
  #if TARGET_BOARD == DUE_BOARD
   delay(50);

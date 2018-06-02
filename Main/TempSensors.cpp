@@ -257,7 +257,7 @@ void WindowState::UpdateState(uint16_t dt)
 
             #if WINDOWS_ENDSTOPS_DRIVE_MODE == DRIVE_DIRECT
 
-              bAnyEndstopTriggered = digitalRead(ENDSTOPS_OPEN[flags.Index]) == WINDOWS_ENDSTOP_TRIGGERED_LEVEL;
+              bAnyEndstopTriggered = WORK_STATUS.PinRead(ENDSTOPS_OPEN[flags.Index]) == WINDOWS_ENDSTOP_TRIGGERED_LEVEL;
                             
             #elif WINDOWS_ENDSTOPS_DRIVE_MODE == DRIVE_MCP23S17
             
@@ -296,7 +296,7 @@ void WindowState::UpdateState(uint16_t dt)
 
             #if WINDOWS_ENDSTOPS_DRIVE_MODE == DRIVE_DIRECT
 
-              bAnyEndstopTriggered = digitalRead(ENDSTOPS_CLOSE[flags.Index]) == WINDOWS_ENDSTOP_TRIGGERED_LEVEL;
+              bAnyEndstopTriggered = WORK_STATUS.PinRead(ENDSTOPS_CLOSE[flags.Index]) == WINDOWS_ENDSTOP_TRIGGERED_LEVEL;
                             
             #elif WINDOWS_ENDSTOPS_DRIVE_MODE == DRIVE_MCP23S17
             
