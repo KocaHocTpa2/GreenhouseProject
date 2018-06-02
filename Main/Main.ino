@@ -154,6 +154,10 @@
 #include "Buzzer.h"
 #endif
 
+#ifdef USE_MCP_MODULE
+#include "MCPModule.h"
+#endif
+
 #include "DelayedEvents.h"
 
 #include<Wire.h>
@@ -268,6 +272,10 @@ EthernetModule ethernetModule;
 
 #ifdef USE_RESERVATION_MODULE
 ReservationModule reservationModule;
+#endif
+
+#ifdef USE_MCP_MODULE
+MCPModule mcpModule;
 #endif
 
 #ifdef USE_TIMER_MODULE
@@ -437,6 +445,10 @@ void setup()
   #endif
 
   START_LOG(16);
+
+  #ifdef USE_MCP_MODULE
+  controller.RegisterModule(&mcpModule);
+  #endif
   
   START_LOG(17);
 

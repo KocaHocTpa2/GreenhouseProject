@@ -36,6 +36,20 @@
 // start this line with comment, if you don't want to use PIN module (drive pins by using commands like CTSET=PIN|13|ON etc.) 
 #define USE_PIN_MODULE 
 //--------------------------------------------------------------------------------------------------------------------------------
+// раскомментировать, если надо управлять микросхемами MCP* с внешних команд (CTGET и CTSET, а также через MQTT командами GET и SET)
+// uncomment following line, if you want to control MCP* through CTGET= and CTSET= commands, and also MQTT (trough GET or SET commands)
+//#define USE_MCP_MODULE
+
+// SET:
+//    CTSET=MCP|SPI|MODE|mcpNumber|mcpChannel|pinMode, for example  CTSET=MCP|SPI|MODE|0|7|OUT, CTSET=MCP|SPI|MODE|1|2|IN
+//    CTSET=MCP|SPI|WRITE|mcpNumber|mcpChannel|level, for example  CTSET=MCP|SPI|WRITE|2|10|ON, CTSET=MCP|SPI|WRITE|0|4|OFF
+//    CTSET=MCP|I2C|MODE|mcpNumber|mcpChannel|pinMode, for example  CTSET=MCP|I2C|MODE|0|7|OUT, CTSET=MCP|I2C|MODE|1|2|IN
+//    CTSET=MCP|I2C|WRITE|mcpNumber|mcpChannel|level, for example  CTSET=MCP|I2C|WRITE|2|10|ON, CTSET=MCP|I2C|WRITE|0|4|OFF
+
+// GET:
+//    CTGET=MCP|SPI|mcpNumber|mcpChannel
+//    CTGET=MCP|I2C|mcpNumber|mcpChannel
+//--------------------------------------------------------------------------------------------------------------------------------
 // закомментировать, если не нужно управление окнами по температуре
 // start this line with comment, if you don't want to use STATE module (drive windows and holds temperature from DS18*20 sensors)
 #define USE_TEMP_SENSORS
