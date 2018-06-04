@@ -11,13 +11,14 @@ HumidityAnswer DHTSupport::read(uint8_t pin, DHTType sensorType)
   HumidityAnswer answer;
   answer.IsOK = false;
 
-  uint8_t wakeup_delay = DHT2x_WAKEUP;
+  uint32_t wakeup_delay = DHT2x_WAKEUP;
   
   if(sensorType == DHT_11)
     wakeup_delay = DHT11_WAKEUP;
 
   const uint32_t mstcc = ( F_CPU / 40000 ); // сторож таймаута - 100us
 
+/*
   uint8_t bit = digitalPinToBitMask(pin);
   #if (TARGET_BOARD == MEGA_BOARD)
   uint8_t 
@@ -41,11 +42,11 @@ HumidityAnswer DHTSupport::read(uint8_t pin, DHTType sensorType)
     #error "Unknown target board!"
   #endif  
   PIR = portInputRegister(port);
-
+*/
   // начинаем читать с датчика
   pinMode(pin,OUTPUT);
   digitalWrite(pin,LOW); // прижимаем к земле
-  delay(wakeup_delay); // и ждём, пока датчик прочухается
+  delayMicroseconds(wakeup_delay); // и ждём, пока датчик прочухается
   digitalWrite(pin,HIGH); // поднимаем линию
   delayMicroseconds(40); // ждём 40us, как написано в даташите
   WORK_STATUS.PinMode(pin, INPUT_PULLUP); // переводим пин на чтение
@@ -56,13 +57,15 @@ HumidityAnswer DHTSupport::read(uint8_t pin, DHTType sensorType)
   
   uint32_t tmout_guard = mstcc;
   
-  while ((*PIR & bit) == LOW )//while(digitalRead(pin) == LOW) // читаем, пока низкий уровень на пине
+  /*while ((*PIR & bit) == LOW )/*/
+  while(digitalRead(pin) == LOW) // читаем, пока низкий уровень на пине
   {
     if(!--tmout_guard)
      return answer; // таймаут поймали
   }
   tmout_guard = mstcc;
-  while ((*PIR & bit) != LOW )//while(digitalRead(pin) == HIGH) // читаем, пока высокий уровень на пине
+  /*while ((*PIR & bit) != LOW )/*/
+  while(digitalRead(pin) == HIGH) // читаем, пока высокий уровень на пине
   {
     if(!--tmout_guard)
      return answer; // таймаут поймали
@@ -70,8 +73,11 @@ HumidityAnswer DHTSupport::read(uint8_t pin, DHTType sensorType)
 
   // считаем, что теперь пойдут данные. нам надо получить 40 бит, т.е. 5 байт.
   uint8_t bytes[5] = {0}; // байты, в которые мы будем принимать данные
+  /*
   for(uint8_t i=0;i<5;i++)
     bytes[i] = 0;
+  */
+  memset(bytes,0,5);
   
   uint8_t idx = 0; // индекс текущего байта
   uint8_t bitmask = 0x80; // старший бит байта установлен в единичку, его будем двигать вниз
@@ -80,7 +86,8 @@ HumidityAnswer DHTSupport::read(uint8_t pin, DHTType sensorType)
   {
       // сначала ждём 50us, говорящие, что пойдёт следующий бит
       tmout_guard = mstcc;
-      while ((*PIR & bit) == LOW )//while(digitalRead(pin) == LOW)
+      /*while ((*PIR & bit) == LOW )/*/
+      while(digitalRead(pin) == LOW)
       {
         if(!--tmout_guard)
             return answer; // таймаут поймали
@@ -90,7 +97,8 @@ HumidityAnswer DHTSupport::read(uint8_t pin, DHTType sensorType)
 
       tmout_guard = mstcc;
       uint32_t tMicros = micros();
-      while ((*PIR & bit) != LOW )//while(digitalRead(pin) == HIGH)
+      /*while ((*PIR & bit) != LOW )/*/
+      while(digitalRead(pin) == HIGH)
       {
         if(!--tmout_guard)
             return answer; // таймаут поймали
@@ -112,8 +120,8 @@ HumidityAnswer DHTSupport::read(uint8_t pin, DHTType sensorType)
         
   } // for
 
-  pinMode(pin, OUTPUT);
-  digitalWrite(pin, HIGH); // поднимаем линию, говоря датчику, что он свободен
+ // pinMode(pin, OUTPUT);
+//  digitalWrite(pin, HIGH); // поднимаем линию, говоря датчику, что он свободен
 
 
   // проверяем принятые данные
