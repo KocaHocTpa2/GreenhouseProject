@@ -317,6 +317,21 @@
                   <br/><br/>
                   </div>
                   
+                  
+                  <div id='pins_status' class='hdn'>
+                  
+                    <div class='ui-widget-header ui-corner-top padding_around8px'>Пины</div>
+                    <div class='ui-widget-content ui-corner-bottom padding_around8px'>
+                    
+                         <div class='padding_around8px' id="pins_list">
+                            
+                        </div>                     
+                    
+                    </div>
+                  
+                  <br/><br/>
+                  </div>
+                  
               </div>
 
                   <div class='content hdn' id='WELCOME_MENU_CONTENT'>

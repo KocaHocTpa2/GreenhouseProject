@@ -3188,7 +3188,8 @@ $(document).ready(function(){
     $('#all_watering_start_hour, #all_watering_start_minute, #all_watering_time, #ph_calibraton, #ph4Voltage, #ph7Voltage, #ph10Voltage, #phTemperatureSensor, #phCalibrationTemperature, #phTarget, #phHisteresis, #phMixPumpTime, #phReagentPumpTime').forceNumericOnly();
     $('#watering_start_hour, #watering_start_minute, #watering_time, #watering_sensor_index, #watering_stop_border, #all_watering_sensor_index, #all_watering_stop_border').forceNumericOnly(); 
 
-    $('#rule_work_time_input, #rule_start_time_input, #rule_sensor_value_input').forceNumericOnly();
+    $('#rule_work_time_input, #rule_start_time_input').forceNumericOnly();
+//    $('#rule_work_time_input, #rule_start_time_input, #rule_sensor_value_input').forceNumericOnly();
     
     for(var i=0;i<CompositeActionsNames.length;i++)
     {

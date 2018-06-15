@@ -258,6 +258,137 @@ controller.OnStatus = function(obj)
   });
   
   
+  
+    controller.queryCommand(true,'0|PSTATE',function(obj,answer){
+  
+     var list = $('#pins_list');
+       
+     if(!answer.IsOK || answer.Params.length < 1)
+     {
+      $("#pins_status").toggle(false);
+      return;
+     }
+     
+      $("#pins_status").toggle(true);
+      
+      var state = answer.Params[0].trim();      
+      var pinsCount = parseInt(state.length*4);
+      var bytesCount = parseInt(pinsCount/8);
+              
+      var buttons = list.children('button');
+      var countButtons = buttons.length;
+      
+      if(countButtons > pinsCount)
+      {
+        list.empty();
+        countButtons = 0;
+      }
+      
+      while(countButtons < pinsCount)
+      {
+        var button = $("<button/>",{'data-pin-id' : countButtons, 'class' : 'pin-button'});
+        button.appendTo(list);
+        countButtons++;
+      }
+      
+      var bytes = [];
+      for(var i=0;i<bytesCount*2;i+=2)
+      {
+        var bVal = state.substring(i,i+2);
+        bytes.push(parseInt('0x' + bVal));
+      }
+            
+      // теперь назначаем кнопкам надписи
+      for(var i=0;i<pinsCount;i++)
+      {
+        var button = list.find("[data-pin-id=" + i + "]");
+        button.button();       
+        button.html(i);
+        button.removeClass('pin-on');
+        button.attr('data-pin-on', 0);
+        
+        var byteNum = parseInt(i/8);
+        var bitNum = i%8;
+        
+        var curByte = bytes[byteNum];
+        if(curByte & (1 << bitNum))
+        {
+          button.addClass('pin-on');
+          button.attr('data-pin-on', 1);         
+        }
+        
+        button.off('click').click(function(){
+        
+          var btn = $(this);
+          var pinNumber = parseInt(btn.attr('data-pin-id'));
+          var isOn = parseInt(btn.attr('data-pin-on')) == 1;
+          
+          promptMessage('Поменять состояние пина?',
+            function() {
+              
+              isOn = !isOn;
+              btn.attr('data-pin-on', isOn ? 1 : 0); 
+              if(isOn)
+                btn.addClass('pin-on');
+              else
+                btn.removeClass('pin-on');
+              
+              var cmd = 'PIN|' + pinNumber + "|"  + (isOn ? "ON" : "OFF");
+              controller.queryCommand(false,cmd);
+              
+            });               
+        
+        });
+        /*
+
+        var channelEnabled = statemask.substring(i,i+1) == '1' ? true : false;        
+        button.attr('data-channel-enabled', channelEnabled ? 1 : 0);
+        setWaterChannelButtonState(button,(i+1),channelEnabled);
+              
+        button.off('click').click(function(){
+        
+          var btn = $(this);
+          var channelId = parseInt(btn.attr('data-channel-id'));
+          var isEnabled = parseInt(btn.attr('data-channel-enabled')) == 1;
+          
+          //btn.attr('disabled','disabled'); 
+          //btn.removeClass('water-on').removeClass('water-off').addClass('water-intermediate');
+          
+          btn.attr('data-channel-enabled', !isEnabled ? 1 : 0);
+          
+          setWaterChannelButtonState(btn,(channelId+1),!isEnabled);
+          
+          var command = "WATER|";
+          if(isEnabled)
+            command += "OFF|";
+          else
+            command += "ON|";
+            
+            command += channelId;
+            
+            controller.queryCommand(false,command,function(obj,answer){});
+        
+        });
+        */
+        
+      } // for
+      
+
+  });
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   controller.queryCommand(true,'STATE|WINDOW|STATEMASK',function(obj,answer){
     
         var list = $('#windowsChannelsState');
@@ -409,6 +540,8 @@ controller.OnUpdate = function(obj, answer)
     updateWaterState();
     updateLightState();
     updatePHState();
+    
+    $('#pins_status').toggle(controller.Modules.includes('PIN'));
       
     //$('#WELCOME_MENU').show();
   
