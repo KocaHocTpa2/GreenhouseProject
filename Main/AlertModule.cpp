@@ -546,7 +546,10 @@ bool AlertRule::HasAlert()
 
     case rtPinState: // следим за статусом пина
     {
-       WORK_STATUS.PinMode(Settings.SensorIndex,INPUT);
+       #ifndef ALERT_DONT_READ_PIN_DIRECT
+        WORK_STATUS.PinMode(Settings.SensorIndex,INPUT);
+       #endif
+       
        int pinState = WORK_STATUS.PinRead(Settings.SensorIndex); // читаем из пина его значение
        // dataAlertLong у нас может принимать одно значение: 1, поскольку мы сравниваем
        // это значение с HIGH и LOW на пине. Поэтому не имеют смысла операнды > и <=,

@@ -293,8 +293,12 @@ void WorkStatus::SaveWaterChannelState(byte channel, byte state)
 //--------------------------------------------------------------------------------------------------------------------------------
 byte WorkStatus::PinRead(byte pin)
 {
-  if(pin < VIRTUAL_PIN_START_NUMBER)
-    return digitalRead(pin);
+  #ifndef ALERT_DONT_READ_PIN_DIRECT
+  
+    if(pin < VIRTUAL_PIN_START_NUMBER)
+      return digitalRead(pin);
+    
+  #endif
 
   uint8_t byte_num = pin/8;
   uint8_t bit_num = pin%8;
