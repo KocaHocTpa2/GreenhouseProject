@@ -18,6 +18,33 @@
   #define WTR_LOG(s) (void) 0
 #endif
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_WATERING_GUARD
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+static uint8_t WGUARD_PINS[] = { WATERING_GUARD_PINS };
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void setupWGuard() // настраиваем защиту полива
+{
+  const size_t cnt = sizeof(WGUARD_PINS)/sizeof(WGUARD_PINS[0]);
+  for(size_t i=0;i<cnt;i++)
+  {
+    WORK_STATUS.PinMode(WGUARD_PINS[i],INPUT);
+  }
+}
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+bool hasWGuardAlert() // тестируем, сработала ли защита
+{
+  const size_t cnt = sizeof(WGUARD_PINS)/sizeof(WGUARD_PINS[0]);
+  for(size_t i=0;i<cnt;i++)
+  {
+    if(WORK_STATUS.PinRead(WGUARD_PINS[i]) == WATERING_GUARD_ALERT)
+      return true;
+  }
+
+  return false;
+}
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#endif // USE_WATERING_GUARD
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #if WATER_RELAYS_COUNT > 0
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 static uint8_t WATER_RELAYS[] = { WATER_RELAYS_PINS }; // объявляем массив пинов реле
@@ -578,6 +605,10 @@ void WateringModule::Setup()
   // настройка модуля тут
   WTR_LOG(F("[WTR] - setup...\r\n"));
 
+  #ifdef USE_WATERING_GUARD
+    setupWGuard(); // настраиваем защиту полива
+  #endif // USE_WATERING_GUARD
+
  // GlobalSettings* settings = MainController->GetSettings();
 
   flags.workMode = wwmAutomatic; // автоматический режим работы
@@ -768,7 +799,8 @@ void WateringModule::Update(uint16_t dt)
         // в этом случае, если полив был включен пользователем и настали новые сутки - полив не выключится сам,
         // т.к. канал не обновляет своё состояние при выключенном автоуправлении каналами.
         TurnChannelsOff();
-      #endif
+        
+      #endif // SWITCH_TO_AUTOMATIC_WATERING_MODE_AFTER_MIDNIGHT
 
       //Тут затирание в EEPROM предыдущего сохранённого значения о статусе полива на всех каналах
       ResetChannelsState();
@@ -779,11 +811,27 @@ void WateringModule::Update(uint16_t dt)
 
     #endif // USE_DS3231_REALTIME_CLOCK
 
-    // теперь обновляем все каналы
-    for(uint8_t i=0;i<WATER_RELAYS_COUNT;i++)
+    // в этой точке мы должны выяснять - надо ли гасить каналы, если мы используем защиту полива
+    bool canUpdateChannels = true;
+
+    #ifdef USE_WATERING_GUARD
+      if(hasWGuardAlert()) // сработала защита полива
+      {
+        canUpdateChannels = false;
+        // выключаем все каналы
+        TurnChannelsOff();
+        
+      }
+    #endif // USE_WATERING_GUARD
+
+    if(canUpdateChannels)
     {
-        wateringChannels[i].Update(dt,(WateringWorkMode) flags.workMode,t,lastDOW);
-    } // for
+      // теперь обновляем все каналы
+      for(uint8_t i=0;i<WATER_RELAYS_COUNT;i++)
+      {
+          wateringChannels[i].Update(dt,(WateringWorkMode) flags.workMode,t,lastDOW);
+      } // for
+    }
 
     #ifdef USE_PUMP_RELAY
       UpdatePumps();
@@ -1058,17 +1106,28 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
            // если же мы в автоматическом режиме и команда пришла не от юзера - также выключаем автоуправление поливом.
            // если команда пришла от юзера - переходим в ручной режим работы
 
-           if(argsCount < 2) // для всех каналов запросили
-              TurnChannelsOn(); // включаем все каналы
-           else
+           bool canProcessCommand = true;
+
+          // если используем защиту полива - то можем включать каналы только, если защита полива не сработала
+          #ifdef USE_WATERING_GUARD
+            if(hasWGuardAlert())
+              canProcessCommand = false;
+          #endif // USE_WATERING_GUARD
+
+           if(canProcessCommand)
            {
-             // запросили для одного канала
-             byte channelIndex = (byte) atoi(command.GetArg(1));
-             #if WATER_RELAYS_COUNT > 0
-              if(channelIndex < WATER_RELAYS_COUNT)
-                TurnChannelOn(channelIndex); // включаем полив на канале
-             #endif // WATER_RELAYS_COUNT > 0
-           }
+             if(argsCount < 2) // для всех каналов запросили
+                TurnChannelsOn(); // включаем все каналы
+             else
+             {
+               // запросили для одного канала
+               byte channelIndex = (byte) atoi(command.GetArg(1));
+               #if WATER_RELAYS_COUNT > 0
+                if(channelIndex < WATER_RELAYS_COUNT)
+                  TurnChannelOn(channelIndex); // включаем полив на канале
+               #endif // WATER_RELAYS_COUNT > 0
+             }
+           } // if(canProcessCommand)
 
            // потом смотрим - откуда команда
            if(command.IsInternal())
