@@ -1,21 +1,10 @@
 #include "NextionModule.h"
-#include "ModuleController.h"
-#include "InteropStream.h"
-//--------------------------------------------------------------------------------------------------------------------------------------
-#ifdef USE_NEXTION_MODULE
-
-#ifdef USE_BUZZER
-#include "Buzzer.h"
-#endif
-
-#ifdef USE_TEMP_SENSORS
-#include "TempSensors.h"
-#endif
-
 #include "CoreNextion.h"
-
-NextionModule* _thisModule = NULL;
-
+//--------------------------------------------------------------------------------------------------------------------------------------
+NextionModule display;
+//--------------------------------------------------------------------------------------------------------------------------------------
+const char* CAPTIONS[] = {SENSORS_CAPTIONS};
+//--------------------------------------------------------------------------------------------------------------------------------------
 #ifndef USE_NEXTION_HARDWARE_UART
 #include <SoftwareSerial.h>
 SoftwareSerial sSerial(NEXTION_SOFTWARE_UART_RX_PIN, NEXTION_SOFTWARE_UART_TX_PIN); // RX, TX
@@ -25,26 +14,20 @@ SoftwareSerial sSerial(NEXTION_SOFTWARE_UART_RX_PIN, NEXTION_SOFTWARE_UART_TX_PI
 
 Nextion nextion(NEXTION_SERIAL);
 
-NextionWaitScreenInfo _waitScreenInfos[] = 
-{
-   NEXTION_WAIT_SCREEN_SENSORS
-  ,{0,0,"",""} // последний элемент пустой, заглушка для признака окончания списка
-};
-//--------------------------------------------------------------------------------------------------------------------------------------
 void ON_NEXTION_SLEEP(Nextion& sender, bool isSleep)
 {
-  _thisModule->SetSleep(isSleep);
+  display.SetSleep(isSleep);
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 void ON_NEXTION_PAGE_ID_RECEIVED(Nextion& sender, uint8_t pageID)
 {
-   _thisModule->OnPageChanged(pageID);
+   display.OnPageChanged(pageID);
   
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 void ON_NEXTION_STRING_RECEIVED(Nextion& sender, const char* str)
 {
-  _thisModule->StringReceived(str);
+  display.StringReceived(str);
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 void NextionModule::UpdatePageData(uint8_t pageId)
@@ -54,9 +37,12 @@ void NextionModule::UpdatePageData(uint8_t pageId)
       case NEXTION_START_PAGE:
       {
       //TODO: Обновляем стартовую страницу!!!
-        updateTime();
         rotationTimer = 0;
         displayNextSensorData(0);
+        //Тут скрываем компонент времени
+        NextionText currentTimeField("curTime");
+        currentTimeField.bind(nextion);
+        currentTimeField.hide();
       }
       break;
 
@@ -69,8 +55,9 @@ void NextionModule::UpdatePageData(uint8_t pageId)
       case NEXTION_WINDOWS_PAGE:
       {
         //TODO: Обновляем страницу окон!!!
-        flags.isWindowsOpen = WORK_STATUS.GetStatus(WINDOWS_STATUS_BIT);
-        flags.isWindowAutoMode = WORK_STATUS.GetStatus(WINDOWS_MODE_BIT);
+        
+        flags.isWindowsOpen = settings.isWindowsOpen;
+        flags.isWindowAutoMode = settings.isWindowAutoMode;
 
         NextionDualStateButton dsb("bt0");
         dsb.bind(nextion);
@@ -78,6 +65,7 @@ void NextionModule::UpdatePageData(uint8_t pageId)
                 
         dsb.setName("bt1");
         dsb.value(flags.isWindowAutoMode ? 1 : 0);
+        
               
       }
       break;
@@ -85,8 +73,9 @@ void NextionModule::UpdatePageData(uint8_t pageId)
       case NEXTION_WATER_PAGE:
       {
         //TODO: Обновляем страницу полива!!!
-        flags.isWaterOn = WORK_STATUS.GetStatus(WATER_STATUS_BIT);
-        flags.isWaterAutoMode = WORK_STATUS.GetStatus(WATER_MODE_BIT);
+        
+        flags.isWaterOn = settings.isWaterOn;
+        flags.isWaterAutoMode = settings.isWaterAutoMode;
 
         NextionDualStateButton dsb("bt0");
         dsb.bind(nextion);
@@ -95,15 +84,17 @@ void NextionModule::UpdatePageData(uint8_t pageId)
         dsb.setName("bt1");
         dsb.value(flags.isWaterAutoMode ? 1 : 0);
         
+        
       }
       break;
 
       case NEXTION_LIGHT_PAGE:
       {
         //TODO: Обновляем страницу досветки!!!
-        #ifdef USE_LUMINOSITY_MODULE
-        flags.isLightOn = WORK_STATUS.GetStatus(LIGHT_STATUS_BIT);
-        flags.isLightAutoMode = WORK_STATUS.GetStatus(LIGHT_MODE_BIT);
+        
+        #ifdef DISPLAY_LIGHT_PAGE
+        flags.isLightOn = settings.isLightOn;
+        flags.isLightAutoMode = settings.isLightAutoMode;
 
         NextionDualStateButton dsb("bt0");
         dsb.bind(nextion);
@@ -112,17 +103,17 @@ void NextionModule::UpdatePageData(uint8_t pageId)
         dsb.setName("bt1");
         dsb.value(flags.isLightAutoMode ? 1 : 0);
         #endif
-
+        
       }
       break;
 
       case NEXTION_OPTIONS_PAGE:
       {
         //TODO: Обновляем страницу опций!!!
-        GlobalSettings* sett = MainController->GetSettings();
-        openTemp = sett->GetOpenTemp();
-        closeTemp = sett->GetCloseTemp();
-        unsigned long ulI = sett->GetOpenInterval()/1000;
+        
+        openTemp = settings.openTemp;
+        closeTemp = settings.closeTemp;
+        unsigned long ulI = settings.interval;
 
         NextionText txt("page5.topen");
         txt.bind(nextion);
@@ -140,10 +131,11 @@ void NextionModule::UpdatePageData(uint8_t pageId)
       case NEXTION_WINDOWS_CHANNELS_PAGE:
       {
         //TODO: Обновляем страницу окон по каналам !!!
-        #ifdef USE_TEMP_SENSORS
+        
+        #ifdef DISPLAY_WINDOWS_PAGE
           for(int i=0;i<SUPPORTED_WINDOWS;i++)
           {
-            bool isWopen = WindowModule->IsWindowOpen(i);
+            bool isWopen = (settings.windowsStatus & (1 << i));
             String nm; nm = "bt"; nm += i;
             NextionDualStateButton dsb(nm.c_str());
             dsb.bind(nextion);
@@ -151,18 +143,20 @@ void NextionModule::UpdatePageData(uint8_t pageId)
 
             yield();
           }
-        #endif // USE_TEMP_SENSORS
+        #endif // DISPLAY_WINDOWS_PAGE
+        
       }
       break;
 
       case NEXTION_WATER_CHANNELS_PAGE:
       {
         //TODO: Обновляем страницу полива по каналам !!!
-        #ifdef USE_WATERING_MODULE
-          ControllerState state = WORK_STATUS.GetState();
+        
+        #ifdef DISPLAY_WATERING_PAGE
+
           for(int i=0;i<WATER_RELAYS_COUNT;i++)
           {
-            bool isWopen = (state.WaterChannelsState & (1 << i));
+            bool isWopen = (currentState.WaterChannelsState & (1 << i));
             String nm; nm = "bt"; nm += i;
             NextionDualStateButton dsb(nm.c_str());
             dsb.bind(nextion);
@@ -171,8 +165,8 @@ void NextionModule::UpdatePageData(uint8_t pageId)
             yield();
           }
 
-          waterChannelsState = state.WaterChannelsState;
-        #endif // USE_WATERING_MODULE
+          waterChannelsState = currentState.WaterChannelsState;
+        #endif // DISPLAY_WATERING_PAGE
       }
       break;      
     } // switch
@@ -191,18 +185,19 @@ void NextionModule::OnPageChanged(uint8_t pageID)
 //--------------------------------------------------------------------------------------------------------------------------------------
 void NextionModule::StringReceived(const char* str)
 {
-  GlobalSettings* sett = MainController->GetSettings();
+
+  #ifdef _DEBUG
+    Serial.println(str);
+  #endif
 
   // по-любому кликнули на кнопку, раз пришла команда
-  #ifdef USE_BUZZER
-  Buzzer.buzz();
-  #endif
+  //TODO: Тут можно пищать баззером!!!
   
   
   // Обрабатываем пришедшие команды здесь
   String sPassed = str;
 
-  #ifdef USE_TEMP_SENSORS
+  #ifdef DISPLAY_WINDOWS_PAGE
   if(sPassed.startsWith(F("wnd")))
   {
     // пришла команда управления каналом окна, имеет вид wnd12=1 (для включения), wnd3=0 (для выключения), номера до '=' - каналы
@@ -211,19 +206,18 @@ void NextionModule::StringReceived(const char* str)
     String channel = sPassed.substring(0,idx);
     sPassed.remove(0,idx+1);
 
-    String cmd; cmd = F("STATE|WINDOW|"); cmd += channel; cmd += '|';
-    if(sPassed.toInt() == 1)
-      cmd += F("OPEN");
-    else
-      cmd += F("CLOSE");
 
-     ModuleInterop.QueryCommand(ctSET,cmd,false);
+    CommandToExecute cmd;
+    cmd.whichCommand = sPassed.toInt() == 1 ? emCommandOpenWindow : emCommandCloseWindow;
+    cmd.param1 = channel.toInt();
+    pool.push_back(cmd);
+    
 
     return;
   } // if(sPassed.startsWith(F("wnd")))
-  #endif // USE_TEMP_SENSORS
+  #endif // DISPLAY_WINDOWS_PAGE
 
-  #ifdef USE_WATERING_MODULE
+  #ifdef DISPLAY_WATERING_PAGE
   if(sPassed.startsWith(F("wtrng")))
   {
     // пришла команда управления каналом полива, имеет вид wtrng12=1 (для включения), wtrng3=0 (для выключения), номера до '=' - каналы
@@ -232,130 +226,168 @@ void NextionModule::StringReceived(const char* str)
     String channel = sPassed.substring(0,idx);
     sPassed.remove(0,idx+1);
 
-    String cmd; cmd = F("WATER|");
-    if(sPassed.toInt() == 1)
-      cmd += F("ON|");
-    else
-      cmd += F("OFF|");
-    cmd += channel;
-
-     ModuleInterop.QueryCommand(ctSET,cmd,false);
+    CommandToExecute cmd;
+    cmd.whichCommand = sPassed.toInt() == 1 ? emCommandWaterChannelOn : emCommandWaterChannelOff;
+    cmd.param1 = channel.toInt();
+    pool.push_back(cmd);
 
     return;
   } // if(sPassed.startsWith(F("wtrng")))
-  #endif // USE_WATERING_MODULE
+  #endif // DISPLAY_WATERING_PAGE
 
   if(sPassed.startsWith(F("topen=")))
   {
     sPassed.remove(0,6);
-    sett->SetOpenTemp(sPassed.toInt());
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandSetOpenTemp;
+    cmd.param1 = sPassed.toInt();
+    pool.push_back(cmd);
     return;    
   }
 
   if(sPassed.startsWith(F("tclose=")))
   {
     sPassed.remove(0,7);
-    sett->SetCloseTemp(sPassed.toInt());
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandSetCloseTemp;
+    cmd.param1 = sPassed.toInt();
+    pool.push_back(cmd);
     return;    
   }
 
   if(sPassed.startsWith(F("motors=")))
   {
     sPassed.remove(0,7);
-    sett->SetOpenInterval(sPassed.toInt()*1000);
+
+    uint16_t iVal = sPassed.toInt();
+    byte b[2]; memcpy(b,&iVal,2);
+    
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandSetMotorsInterval;
+    cmd.param1 = b[0];
+    cmd.param2 = b[1];
+    pool.push_back(cmd);   
     return;    
   }
   
 
-  #ifdef USE_TEMP_SENSORS
+  #ifdef DISPLAY_WINDOWS_PAGE
   if(!strcmp_P(str,(const char*)F("w_open")))
   {
-    // попросили открыть окна
-    ModuleInterop.QueryCommand(ctSET,F("STATE|WINDOW|ALL|OPEN"),false);
+    // попросили открыть окна    
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandOpenWindows;
+    cmd.param1 = 0;
+    cmd.param2 = 100;
+    pool.push_back(cmd);    
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("w_close")))
   {
     // попросили закрыть окна
-    ModuleInterop.QueryCommand(ctSET,F("STATE|WINDOW|ALL|CLOSE"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandCloseWindows;
+    cmd.param1 = 0;
+    cmd.param2 = 0;
+    pool.push_back(cmd);  
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("w_auto")))
   {
     // попросили перевести в автоматический режим окон
-    ModuleInterop.QueryCommand(ctSET,F("STATE|MODE|AUTO"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandWindowsAutoMode;
+    pool.push_back(cmd);  
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("w_manual")))
   {
     // попросили перевести в ручной режим работы окон
-    ModuleInterop.QueryCommand(ctSET,F("STATE|MODE|MANUAL"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandWindowsManualMode;
+    pool.push_back(cmd);  
     return;
   }
-  #endif // USE_TEMP_SENSORS
+  #endif // DISPLAY_WINDOWS_PAGE
 
-  #ifdef USE_WATERING_MODULE
+  #ifdef DISPLAY_WATERING_PAGE
   if(!strcmp_P(str,(const char*)F("wtr_on")))
   {
     // попросили включить полив
-    ModuleInterop.QueryCommand(ctSET,F("WATER|ON"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandWaterOn;
+    pool.push_back(cmd);  
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("wtr_off")))
   {
     // попросили выключить полив
-    ModuleInterop.QueryCommand(ctSET,F("WATER|OFF"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandWaterOff;
+    pool.push_back(cmd);  
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("wtr_auto")))
   {
     // попросили перевести в автоматический режим работы полива
-    ModuleInterop.QueryCommand(ctSET,F("WATER|MODE|AUTO"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandWaterAutoMode;
+    pool.push_back(cmd);  
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("wtr_manual")))
   {
     // попросили перевести в ручной режим работы полива
-    ModuleInterop.QueryCommand(ctSET,F("WATER|MODE|MANUAL"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandWaterManualMode;
+    pool.push_back(cmd);  
     return;
   }
-  #endif USE_WATERING_MODULE
+  #endif DISPLAY_WATERING_PAGE
 
-  #ifdef USE_LUMINOSITY_MODULE
+  #ifdef DISPLAY_LIGHT_PAGE
   if(!strcmp_P(str,(const char*)F("lht_on")))
   {
     // попросили включить досветку
-    ModuleInterop.QueryCommand(ctSET,F("LIGHT|ON"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandLightOn;
+    pool.push_back(cmd);  
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("lht_off")))
   {
     // попросили выключить досветку
-    ModuleInterop.QueryCommand(ctSET,F("LIGHT|OFF"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandLigntOff;
+    pool.push_back(cmd);  
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("lht_auto")))
   {
     // попросили перевести досветку в автоматический режим
-    ModuleInterop.QueryCommand(ctSET,F("LIGHT|MODE|AUTO"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandLightAutoMode;
+    pool.push_back(cmd);  
     return;
   }
   
   if(!strcmp_P(str,(const char*)F("lht_manual")))
   {
     // попросили перевести досветку в ручной режим
-    ModuleInterop.QueryCommand(ctSET,F("LIGHT|MODE|MANUAL"),false);
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandLightManualMode;
+    pool.push_back(cmd);  
     return;
   }
-  #endif // USE_LUMINOSITY_MODULE
+  #endif // DISPLAY_LIGHT_PAGE
  
  if(!strcmp_P(str,(const char*)F("prev")))
   {
@@ -383,22 +415,19 @@ void NextionModule::SetSleep(bool bSleep)
 
   if(!bSleep)
   {
-    if(currentPage == NEXTION_START_PAGE)
-      updateTime();    
+   // if(currentPage == NEXTION_START_PAGE)
+   //   updateTime();    
   }
 
   // говорим, что надо бы показать данные с датчиков
   rotationTimer = NEXTION_ROTATION_INTERVAL;
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
-void NextionModule::Setup()
+void NextionModule::begin()
 {
   // настройка модуля тут
-  _thisModule = this;
   currentPage = 0;
   
- GlobalSettings* sett = MainController->GetSettings();
-
   rotationTimer = NEXTION_ROTATION_INTERVAL;
   currentSensorIndex = -1;
   
@@ -414,45 +443,7 @@ void NextionModule::Setup()
   flags.closeTempChanged = true;
 
     
-  NEXTION_SERIAL.begin(SERIAL_BAUD_RATE);
-
-  #ifdef USE_NEXTION_HARDWARE_UART
-
-      #if TARGET_BOARD == STM32_BOARD
-      if((int*)&(NEXTION_SERIAL) == (int*)&Serial) {
-           WORK_STATUS.PinMode(0,INPUT_PULLUP,true);
-           WORK_STATUS.PinMode(1,OUTPUT,false);
-      } else if((int*)&(NEXTION_SERIAL) == (int*)&Serial1) {
-           WORK_STATUS.PinMode(19,INPUT_PULLUP,true);
-           WORK_STATUS.PinMode(18,OUTPUT,false);
-      } else if((int*)&(NEXTION_SERIAL) == (int*)&Serial2) {
-           WORK_STATUS.PinMode(17,INPUT_PULLUP,true);
-           WORK_STATUS.PinMode(16,OUTPUT,false);
-      } else if((int*)&(NEXTION_SERIAL) == (int*)&Serial3) {
-           WORK_STATUS.PinMode(15,INPUT_PULLUP,true);
-           WORK_STATUS.PinMode(14,OUTPUT,false);
-      }
-      #else
-      if(&(NEXTION_SERIAL) == &Serial) {
-           WORK_STATUS.PinMode(0,INPUT_PULLUP,true);
-           WORK_STATUS.PinMode(1,OUTPUT,false);
-      } else if(&(NEXTION_SERIAL) == &Serial1) {
-           WORK_STATUS.PinMode(19,INPUT_PULLUP,true);
-           WORK_STATUS.PinMode(18,OUTPUT,false);
-      } else if(&(NEXTION_SERIAL) == &Serial2) {
-           WORK_STATUS.PinMode(17,INPUT_PULLUP,true);
-           WORK_STATUS.PinMode(16,OUTPUT,false);
-      } else if(&(NEXTION_SERIAL) == &Serial3) {
-           WORK_STATUS.PinMode(15,INPUT_PULLUP,true);
-           WORK_STATUS.PinMode(14,OUTPUT,false);
-      }
-      #endif
-
-  #else
-           WORK_STATUS.PinMode(NEXTION_SOFTWARE_UART_RX_PIN,INPUT,false);
-           WORK_STATUS.PinMode(NEXTION_SOFTWARE_UART_TX_PIN,OUTPUT,false);
-  #endif
-
+  NEXTION_SERIAL.begin(RS485_SPEED);
   nextion.begin();
 
     nextion.sleepDelay(NEXTION_SLEEP_DELAY);
@@ -462,9 +453,8 @@ void NextionModule::Setup()
     waitTimer.bind(nextion);
     waitTimer.value(NEXTION_WAIT_TIMER);
 
-    updateTime();
-
-    #ifndef USE_TEMP_SENSORS
+      
+    #ifndef DISPLAY_WINDOWS_PAGE
       // тут скрываем кнопки вызова экранов управления окнами, т.к. модуля нет в прошивке
       NextionNumberVariable wnd("wndvis");
       wnd.bind(nextion);
@@ -472,12 +462,14 @@ void NextionModule::Setup()
     #else
       // сохраняем текущее положение окон
       windowsPositionFlags = 0;
+      /*
       for(int i=0;i<SUPPORTED_WINDOWS;i++)
       {
         bool isWOpen = WindowModule->IsWindowOpen(i);
         if(isWOpen)
           windowsPositionFlags |= (1 << i);
       }
+      */
       // тут настраиваем кнопки управления каналами окон, скрывая ненужные из них
       for(int i=SUPPORTED_WINDOWS;i<16;i++)
       {
@@ -491,14 +483,14 @@ void NextionModule::Setup()
       
     #endif    
 
-    #ifndef USE_WATERING_MODULE
+    #ifndef DISPLAY_WATERING_PAGE
       // тут скрываем кнопки вызова экранов управления поливом, т.к. модуля нет в прошивке
       NextionNumberVariable wtr("wtrvis");
       wtr.bind(nextion);
       wtr.value(0);
     #else
-       ControllerState state = WORK_STATUS.GetState();
-       waterChannelsState = state.WaterChannelsState;
+
+       waterChannelsState = currentState.WaterChannelsState;
       // настраиваем кнопки каналов полива, скрывая ненужные из них
       for(int i=WATER_RELAYS_COUNT;i<16;i++)
       {
@@ -510,13 +502,14 @@ void NextionModule::Setup()
       }
     #endif
 
-    #ifndef USE_LUMINOSITY_MODULE
+    #ifndef DISPLAY_LIGHT_PAGE
       // тут скрываем кнопки вызова экранов управления досветкой, т.к. модуля нет в прошивке
       NextionNumberVariable lum("lumvis");
       lum.bind(nextion);
       lum.value(0);
     #endif          
-        
+
+    /*
     flags.isWindowsOpen = WORK_STATUS.GetStatus(WINDOWS_STATUS_BIT);
     flags.isWindowAutoMode = WORK_STATUS.GetStatus(WINDOWS_MODE_BIT);
     
@@ -525,17 +518,19 @@ void NextionModule::Setup()
 
     flags.isLightOn = WORK_STATUS.GetStatus(LIGHT_STATUS_BIT);
     flags.isLightAutoMode = WORK_STATUS.GetStatus(LIGHT_MODE_BIT);
-
-    openTemp = sett->GetOpenTemp();
-    closeTemp = sett->GetCloseTemp();
+    */
+   // openTemp = sett->GetOpenTemp();
+   // closeTemp = sett->GetCloseTemp();
     
     updateDisplayData();
 
+    /*
     unsigned long ulI = sett->GetOpenInterval()/1000;
 
     NextionText txt("page5.motors");
     txt.bind(nextion);
     txt.text(String(ulI).c_str());
+    */
 
  }
 //--------------------------------------------------------------------------------------------------------------------------------------
@@ -627,54 +622,36 @@ void NextionModule::updateDisplayData()
       txt.text(String(closeTemp).c_str());
     }
     
+    
    
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
-void NextionModule::updateTime()
-{
-    #ifdef USE_DS3231_REALTIME_CLOCK
-      RealtimeClock rtc = MainController->GetClock();
-      RTCTime controllerTime = rtc.getTime();
-      
-      NextionText currentTimeField("curTime");
-      currentTimeField.bind(nextion);
-      String ct;
-      ct = rtc.getDateStr(controllerTime);
-      ct += ' ';
-      ct += rtc.getTimeStr(controllerTime);
-      
-      ct.remove(ct.lastIndexOf(":"));
-      currentTimeField.text(ct.c_str());     
-    #endif      
-  
-}
-//--------------------------------------------------------------------------------------------------------------------------------------
-void NextionModule::Update(uint16_t dt)
+void NextionModule::update(uint16_t dt)
 { 
   rotationTimer += dt;
-  // обновление модуля тут
-  GlobalSettings* sett = MainController->GetSettings();
-  
+    
   nextion.update(); // обновляем работу с дисплеем
 
-
-  static uint16_t timeCntr = 0;
-  timeCntr += dt;
-  if(timeCntr > 60000)
+  if(millis() - resetSensorsTimer > RESET_SENSORS_DATA_DELAY)
   {
-    timeCntr = 0;
-    if(currentPage == NEXTION_START_PAGE)
-      updateTime();
+    for(size_t i=0;i<sensors.size();i++)
+    {
+      sensors[i].hasData = false;
+    }
+    resetSensorsTimer = millis();
   }
 
+
   // смотрим, не изменилось ли чего в позиции окон?
-  #ifdef USE_TEMP_SENSORS
+  #ifdef DISPLAY_WINDOWS_PAGE
   if(currentPage == NEXTION_WINDOWS_CHANNELS_PAGE)
   {
       for(int i=0;i<SUPPORTED_WINDOWS;i++)
       {
-        uint8_t isWOpen = WindowModule->IsWindowOpen(i) ? 1 : 0;
+        
+        uint8_t isWOpen = settings.windowsStatus & (1 << i) ? 1 : 0;
         uint8_t lastWOpen = windowsPositionFlags & (1 << i) ? 1 : 0;
+        
         if(lastWOpen != isWOpen)
         {
           windowsPositionFlags &= ~(1 << i);
@@ -685,19 +662,18 @@ void NextionModule::Update(uint16_t dt)
           dsb.value(isWOpen);
         }
         yield();
+       
       }
   }
-  #endif // USE_TEMP_SENSORS
+  #endif // DISPLAY_WINDOWS_PAGE
 
   // смотрим, не изменилось ли чего в состоянии каналов полива?
-  #ifdef USE_WATERING_MODULE
+  #ifdef DISPLAY_WATERING_PAGE
   if(currentPage == NEXTION_WATER_CHANNELS_PAGE)
-  {
-      ControllerState state = WORK_STATUS.GetState();
-      
+  {      
       for(int i=0;i<WATER_RELAYS_COUNT;i++)
       {
-        uint8_t isWOpen = (state.WaterChannelsState & (1 << i)) ? 1 : 0;
+        uint8_t isWOpen = (currentState.WaterChannelsState & (1 << i)) ? 1 : 0;
         uint8_t lastWOpen = (waterChannelsState & (1 << i)) ? 1 : 0;
         if(lastWOpen != isWOpen)
         {
@@ -709,12 +685,13 @@ void NextionModule::Update(uint16_t dt)
         yield();
       }
 
-      waterChannelsState = state.WaterChannelsState;
+      waterChannelsState = currentState.WaterChannelsState;
   }
-  #endif // USE_WATERING_MODULE  
+  #endif // DISPLAY_WATERING_PAGE  
+
   
   // теперь получаем все настройки и смотрим, изменилось ли чего?
-  bool curVal = WORK_STATUS.GetStatus(WINDOWS_STATUS_BIT);
+  bool curVal = settings.isWindowsOpen;
   if(curVal != flags.isWindowsOpen)
   {
     // состояние окон изменилось
@@ -722,7 +699,7 @@ void NextionModule::Update(uint16_t dt)
     flags.windowChanged = true;
   }
   
-  curVal = WORK_STATUS.GetStatus(WINDOWS_MODE_BIT);
+  curVal = settings.isWindowAutoMode;
   if(curVal != flags.isWindowAutoMode)
   {
     // состояние режима окон изменилось
@@ -730,7 +707,7 @@ void NextionModule::Update(uint16_t dt)
     flags.windowModeChanged = true;
   }
   
-  curVal = WORK_STATUS.GetStatus(WATER_STATUS_BIT);
+  curVal = settings.isWaterOn;
   if(curVal != flags.isWaterOn)
   {
     // состояние полива изменилось
@@ -738,7 +715,7 @@ void NextionModule::Update(uint16_t dt)
     flags.waterChanged = true;
   }
   
-  curVal = WORK_STATUS.GetStatus(WATER_MODE_BIT);
+  curVal = settings.isWaterAutoMode;
   if(curVal != flags.isWaterAutoMode)
   {
     // состояние режима полива изменилось
@@ -747,7 +724,7 @@ void NextionModule::Update(uint16_t dt)
   }
   
   
-  curVal = WORK_STATUS.GetStatus(LIGHT_STATUS_BIT);
+  curVal = settings.isLightOn;
   if(curVal != flags.isLightOn)
   {
     // состояние досветки изменилось
@@ -755,7 +732,7 @@ void NextionModule::Update(uint16_t dt)
     flags.lightChanged = true;
   }
   
-  curVal = WORK_STATUS.GetStatus(LIGHT_MODE_BIT);
+  curVal = settings.isLightAutoMode;
   if(curVal != flags.isLightAutoMode)
   {
     // состояние режима досветки изменилось
@@ -763,7 +740,9 @@ void NextionModule::Update(uint16_t dt)
     flags.lightModeChanged = true;
   }
   
-  uint8_t cTemp = sett->GetOpenTemp();
+
+  
+  uint8_t cTemp = settings.openTemp;
   if(cTemp != openTemp)
   {
     // температура открытия изменилась
@@ -771,13 +750,14 @@ void NextionModule::Update(uint16_t dt)
     flags.openTempChanged = true;
   }
   
-  cTemp = sett->GetCloseTemp();
+  cTemp = settings.closeTemp;
   if(cTemp != closeTemp)
   {
     // температура закрытия изменилась
     closeTemp = cTemp;
     flags.closeTempChanged = true;
   }
+  
 
   updateDisplayData(); // обновляем дисплей
   
@@ -835,72 +815,48 @@ void NextionModule::displayNextSensorData(int8_t dir)
   if(currentPage != NEXTION_START_PAGE)    
     return;
 
+  if(!sensors.size()) // нечего отображать
+    return;
+
   currentSensorIndex += dir; // прибавляем направление
   // при старте currentSensorIndex у нас равен -1, следовательно,
   // мы должны обработать эту ситуацию
   if(currentSensorIndex < 0)
   {
      // перемещаемся на последний элемент
-     currentSensorIndex = 0;
-     int8_t i = 0;
-     while(_waitScreenInfos[i].sensorType) // идём до конца массива, как только встретим пустой элемент - выходим
-     {
-      i++;
-     }
-     currentSensorIndex = i; // запомнили последний валидный элемент в массиве
-     if(currentSensorIndex > 0)
-      currentSensorIndex--;
+     currentSensorIndex = sensors.size() - 1;      
   } // if(currentSensorIndex < 0)
-  
 
-  NextionWaitScreenInfo wsi = _waitScreenInfos[currentSensorIndex];
-  if(!wsi.sensorType)
-  {
-    // ничего нет в текущем элементе списка.
-    // перемещаемся в начало
+  // заворачиваем в начало, если надо
+  if(currentSensorIndex >= sensors.size())
     currentSensorIndex = 0;
-    wsi = _waitScreenInfos[currentSensorIndex];
-  }
-
-  if(!wsi.sensorType)
-  {
-    return; // так ничего и не нашли
-  }
 
 
- // теперь получаем показания от модулей
-  AbstractModule* mod = MainController->GetModuleByID(wsi.moduleName);
-
-  if(!mod) // не нашли такой модуль
-  {
-    rotationTimer = NEXTION_ROTATION_INTERVAL; // просим выбрать следующий модуль
-    return;
-  }
-  OneState* os = mod->State.GetState((ModuleStates)wsi.sensorType,wsi.sensorIndex);
-  if(!os)
-  {
-    // нет такого датчика, просим показать следующие данные
-    rotationTimer = NEXTION_ROTATION_INTERVAL;
-    return;
-  }
+  SensorDisplayData dt = sensors[currentSensorIndex];
 
 
    //Тут получаем актуальные данные от датчиков
-   switch(wsi.sensorType)
+   switch(dt.type)
    {
       case StateTemperature:
       {
-        String displayVal = "-";
-        
-        if(os->HasData())
+        String displayVal = "-";     
+        if(dt.hasData)
         {
-          TemperaturePair tp = *os;
-          displayVal = tp.Current;
+          // во втором байте - целое
+          // в первом - сотые доли
+          displayVal = dt.data[1];
+          displayVal += FRACT_DELIMITER;
+          
+          if(dt.data[0] < 10)
+            displayVal += '0';
+
+          displayVal += dt.data[0];
         }
         
         NextionText txt("scapt");
         txt.bind(nextion);
-        txt.text(convert(wsi.caption).c_str());
+        txt.text(convert(CAPTIONS[currentSensorIndex]).c_str());
 
         txt.setName("sval");
         txt.text(displayVal.c_str());
@@ -911,19 +867,28 @@ void NextionModule::displayNextSensorData(int8_t dir)
       case StateHumidity:
       case StateSoilMoisture:
       {
-        String displayVal = "-";
-        if(os->HasData())
+        String displayVal = "-";     
+        if(dt.hasData)
         {
-          HumidityPair hp = *os;
-          displayVal = hp.Current;
-          displayVal += "%";
+          // во втором байте - целое
+          // в первом - сотые доли
+          displayVal = dt.data[1];
+          displayVal += FRACT_DELIMITER;
+          
+          if(dt.data[0] < 10)
+            displayVal += '0';
+
+          displayVal += dt.data[0];
+
+          displayVal += '%';
         }
+        
         NextionText txt("scapt");
         txt.bind(nextion);
-        txt.text(convert(wsi.caption).c_str());
+        txt.text(convert(CAPTIONS[currentSensorIndex]).c_str());
 
         txt.setName("sval");
-        txt.text(displayVal.c_str());       
+        txt.text(displayVal.c_str());     
       }
       break;
 
@@ -931,19 +896,23 @@ void NextionModule::displayNextSensorData(int8_t dir)
       case StateWaterFlowIncremental:
       {
         String displayVal = "-";
-        if(os->HasData())
+        if(dt.hasData)
         {
-          WaterFlowPair hp = *os;
-          displayVal = hp.Current;
+          // четыре байта расхода воды
+          uint32_t val;
+          memcpy(&val,dt.data,sizeof(uint32_t));
+          
+          displayVal = val;
+          
           displayVal += " ";
-          if(wsi.sensorType == StateWaterFlowInstant)
+          if(dt.type == StateWaterFlowInstant)
             displayVal += F("мл");
           else
             displayVal += F("л");
         }
         NextionText txt("scapt");
         txt.bind(nextion);
-        txt.text(convert(wsi.caption).c_str());
+        txt.text(convert(CAPTIONS[currentSensorIndex]).c_str());
 
         txt.setName("sval");
         txt.text(displayVal.c_str());       
@@ -953,15 +922,22 @@ void NextionModule::displayNextSensorData(int8_t dir)
       case StatePH:
       {
         String displayVal = "-";
-        if(os->HasData())
+        if(dt.hasData)
         {
-          HumidityPair hp = *os;
-          displayVal = hp.Current;
+          // во втором байте - целое
+          // в первом - сотые доли
+          displayVal = dt.data[1];
+          displayVal += FRACT_DELIMITER;
+          
+          if(dt.data[0] < 10)
+            displayVal += '0';
+
+          displayVal += dt.data[0];
           displayVal += " pH";
         }
         NextionText txt("scapt");
         txt.bind(nextion);
-        txt.text(convert(wsi.caption).c_str());
+        txt.text(convert(CAPTIONS[currentSensorIndex]).c_str());
 
         txt.setName("sval");
         txt.text(displayVal.c_str());       
@@ -971,16 +947,18 @@ void NextionModule::displayNextSensorData(int8_t dir)
       case StateLuminosity:
       {
         String displayVal = "-";
-        if(os->HasData())
+        if(dt.hasData)
         {
-          LuminosityPair lp = *os;
-          displayVal = lp.Current;
+          // два байта - освещенность
+          uint16_t val;
+          memcpy(&val,dt.data,sizeof(uint16_t));
+          displayVal = val;
           displayVal += " lux";
         }
         
         NextionText txt("scapt");
         txt.bind(nextion);
-        txt.text(convert(wsi.caption).c_str());
+        txt.text(convert(CAPTIONS[currentSensorIndex]).c_str());
 
         txt.setName("sval");
         txt.text(displayVal.c_str()); 
@@ -991,13 +969,4 @@ void NextionModule::displayNextSensorData(int8_t dir)
 
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
-bool  NextionModule::ExecCommand(const Command& command, bool wantAnswer)
-{
-  UNUSED(wantAnswer);
-  UNUSED(command);
- 
-  return true;
-}
-//--------------------------------------------------------------------------------------------------------------------------------------
-#endif // USE_NEXTION_MODULE
 

@@ -111,7 +111,6 @@ IdlePageMenuItem::IdlePageMenuItem() : AbstractLCDMenuItem(MONITOR_ICON,LCD_MONI
 {
   rotationTimer = ROTATION_INTERVAL; // получаем данные с сенсора сразу в первом вызове update
   currentSensorIndex = 0; 
-  displayString = NULL;
 
 #ifdef SENSORS_SETTINGS_ON_SD_ENABLED
   idleFlags.linkedToSD = false;
@@ -169,7 +168,8 @@ void IdlePageMenuItem::SelectNextSDSensor(LCDMenu* menu)
 
         workFile.openNext(&workDir,O_READ);
 
-        if(!workFile.isOpen()) {
+        if(!workFile.isOpen()) 
+        {
            // дошли до конца, надо выбрать следующую папку
            workDir.close(); // закрываем текущую папку, чтобы перейти на новую папку
            SelectNextSDSensor(menu);
@@ -222,32 +222,41 @@ void IdlePageMenuItem::OpenCurrentSDDirectory(LCDMenu* menu)
       workDir.rewind();
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
-char* IdlePageMenuItem::ReadCurrentFile()
+String IdlePageMenuItem::ReadCurrentFile()
 {
+  String result;
+  
     if(!workFile.isOpen())
-      return NULL;
-
-    uint32_t sz = workFile.fileSize();
-
-    if(sz > 0)
     {
-      char* result = new char[sz+1];
-      result[sz] = '\0';
-      workFile.read(result,sz);
       return result;
     }
 
-    return NULL;
+    int32_t sz = workFile.fileSize();
+
+    if(sz > 0)
+    {
+      char* buff = new char[sz+1];
+      buff[sz] = '\0';
+      workFile.read(buff,sz);
+
+      result = buff;
+      delete [] buff;
+      
+      return result;
+    }
+
+    return result;
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 void IdlePageMenuItem::RequestSDSensorData(LCDMenu* menu)
 {
   UNUSED(menu);
+
+  if(!idleFlags.linkedToSD)
+    return;
   
   sensorData = "";
-  
-  delete [] displayString;
-  displayString = NULL;
+  displayString = "";
 
   
     if(!workFile.isOpen())
@@ -449,7 +458,7 @@ void IdlePageMenuItem::RequestSensorData(const WaitScreenInfo& info)
 {
   // обновляем показания с датчиков
   sensorData = "";
-  displayString = NULL;
+  displayString = "";
 
   if(!info.sensorType) // нечего показывать
     return;
@@ -501,10 +510,12 @@ void IdlePageMenuItem::draw(DrawContext* dc)
 
   // теперь рисуем строку подписи
   cur_top += HINT_FONT_HEIGHT;
-  strW = dc->getStrWidth(displayString);
-  left = (frame_width - strW)/2 + CONTENT_PADDING;
-
-  dc->drawStr(left, cur_top, displayString);
+  if(displayString.length())
+  {
+    strW = dc->getStrWidth(displayString.c_str());
+    left = (frame_width - strW)/2 + CONTENT_PADDING;
+    dc->drawStr(left, cur_top, displayString.c_str());
+  }
   yield();
 
      #ifdef USE_DS3231_REALTIME_CLOCK

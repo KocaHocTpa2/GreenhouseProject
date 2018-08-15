@@ -341,7 +341,9 @@ enum
   RS485SensorDataPacket = 2, 
   RS485WindowsPositionPacket = 3,
   RS485RequestCommandsPacket = 4,
-  RS485CommandsToExecuteReceipt = 5
+  RS485CommandsToExecuteReceipt = 5,
+  RS485SensorDataForRemoteDisplay = 6,
+  RS485SettingsForRemoteDisplay = 7,
 };
 //----------------------------------------------------------------------------------------------------------------
 typedef struct
@@ -352,7 +354,7 @@ typedef struct
   byte direction; // направление: 1 - от меги, 2 - от слейва
   byte type; // тип: 1 - пакет исполнительного модуля, 2 - пакет модуля с датчиками
 
-  byte data[sizeof(ControllerState)]; // N байт данных, для исполнительного модуля в этих данных содержится состояние контроллера
+  byte data[sizeof(ControllerState)]; // 23 байта данных, для исполнительного модуля в этих данных содержится состояние контроллера
   // для модуля с датчиками: первый байт - тип датчика, 2 байт - его индекс в системе. В обратку модуль с датчиками должен заполнить показания (4 байта следом за индексом 
   // датчика в системе и отправить пакет назад, выставив direction и type.
 
@@ -387,6 +389,15 @@ enum // команды с модуля управления
   emCommandPinOn,             // включить пин
   emCommandPinOff,            // выключить пин
   emCommandAutoMode,          // перейти в автоматический режим работы
+  emCommandWindowsAutoMode,   // автоматический режим работы окон
+  emCommandWindowsManualMode,   // ручной режим работы окон
+  emCommandWaterAutoMode,   // автоматический режим работы полива
+  emCommandWaterManualMode,   // ручной режим работы полива
+  emCommandLightAutoMode,   // автоматический режим работы досветки
+  emCommandLightManualMode,   // ручной режим работы досветки
+  emCommandSetOpenTemp, // установить температуру открытия
+  emCommandSetCloseTemp, // установить температуру закрытия
+  emCommandSetMotorsInterval, // установить интервал работы моторов  
 };
 //----------------------------------------------------------------------------------------------------------------
 typedef struct
@@ -404,6 +415,52 @@ typedef struct
   byte reserved; // добитие до 23 байт
   
 } CommandsToExecutePacket; // пакет с командами на выполнение
+//----------------------------------------------------------------------------------------------------------------
+typedef struct
+{
+  uint8_t type; // тип датчика
+  uint8_t data[4]; // данные датчика
+  
+} RemoteDisplaySensorData; // данные одного датчика для выносного дисплея
+//----------------------------------------------------------------------------------------------------------------
+typedef struct
+{
+  uint8_t firstOrLastPacket; // признак начала/окончания всех данных (0 - нет данных, 1 - начало данных, 2 - окончание данных)
+  uint8_t sensorsInPacket; // кол-во датчиков в пакете
+  uint8_t hasDataFlags; // флаги, с каких датчиков в пакете есть показания
+  RemoteDisplaySensorData data[4]; // данные датчиков
+  
+} RemoteDisplaySensorsPacket; // пакет показаний датчиков для выносного дисплея
+//----------------------------------------------------------------------------------------------------------------
+typedef struct
+{
+  uint8_t openTemp; // температура открытия
+  uint8_t closeTemp; // температура закрытия
+  uint16_t interval; // интервал работы моторов
+  uint8_t isWindowsOpen; // открыты ли окна
+  uint8_t isWindowAutoMode; // автоматический режим работы окон?
+  uint16_t windowsStatus; // статус окон по каналам (1 - открыто, 0 - закрыто)
+  uint8_t isWaterOn; // включен ли полив?
+  uint8_t isWaterAutoMode; // автоматический режим работы полива?
+  uint8_t isLightOn; // включена ли досветка
+  uint8_t isLightAutoMode; // автоматический режим работы досветки?
+  uint8_t reserved[11]; // добитие до 23 байт
+
+  
+} RemoteDisplaySettingsPacket; // данные настроек для выносного дисплея
+//----------------------------------------------------------------------------------------------------------------
+#define REMOTE_DISPLAY_FIRST_SENSORS_PACKET 1
+#define REMOTE_DISPLAY_LAST_SENSORS_PACKET 2
+#define REMOTE_DISPLAY_SETTINGS_PACKET 4
+//----------------------------------------------------------------------------------------------------------------
+typedef Vector<RemoteDisplaySensorData> RemoteDisplaySensors;
+typedef struct
+{
+  uint8_t type;
+  uint8_t index;
+  const char* moduleName;
+  
+} RemoteDisplaySensorSetting;
 //----------------------------------------------------------------------------------------------------------------
 typedef struct
 {
@@ -427,6 +484,13 @@ class UniRS485Gate // класс для работы универсальных 
 #ifdef USE_UNI_EXECUTION_MODULE
     unsigned long updateTimer;
 #endif    
+
+#ifdef USE_REMOTE_DISPLAY_MODULE
+    RemoteDisplaySensors remoteDisplaySensors;
+    Vector<bool> remoteDisplaySensorsHasDataFlags;
+    void collectSensorsForRemoteDisplay();
+    void sendRemoteDisplaySettings();
+#endif
 
     void sendControllerStatePacket();
 

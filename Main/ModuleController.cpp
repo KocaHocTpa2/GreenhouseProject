@@ -233,7 +233,18 @@ SdFile::dateTimeCallback(setFileDateTime);
   }
   
  #else
+    delay(50);
     sdCardInitFlag = SDFat.begin(SDCARD_CS_PIN); // пробуем инициализировать SD-модуль
+    if(!sdCardInitFlag)
+    {
+      delay(50);
+      sdCardInitFlag = SDFat.begin(SDCARD_CS_PIN, SPI_HALF_SPEED);
+      if(!sdCardInitFlag)
+        {
+          delay(50);
+          sdCardInitFlag = SDFat.begin(SDCARD_CS_PIN, SPI_QUARTER_SPEED); // пробуем инициализировать SD-модуль
+        }
+    }
  #endif
  
   WORK_STATUS.PinMode(SDCARD_CS_PIN,OUTPUT,false);

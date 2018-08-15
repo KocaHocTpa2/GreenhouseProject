@@ -7,6 +7,9 @@
 #endif
 #include "Memory.h"
 #include "InteropStream.h"
+#ifdef USE_TEMP_SENSORS
+#include "TempSensors.h"
+#endif
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
 UniRegDispatcher UniDispatcher;
 UniScratchpadClass UniScratchpad; // наш пишичитай скратчпада
@@ -109,7 +112,7 @@ void UniRS485Gate::waitTransmitComplete()
  #if (TARGET_BOARD == MEGA_BOARD) 
   while(!(RS_485_UCSR & _BV(RS_485_TXC) ))
   {
-    //yield(); // даём вычитать из буферов ESP и SIM800
+   // yield(); // даём вычитать из буферов ESP и SIM800
   }
  #elif (TARGET_BOARD == DUE_BOARD) 
   //TODO: БЛОКИРУЮЩАЯ ОПЕРАЦИЯ!!!
@@ -289,7 +292,93 @@ void UniRS485Gate::executeCommands(const RS485Packet& packet)
               ModuleInterop.QueryCommand(ctSET, F("0|AUTO"),false);               
           }
           break;
-                  
+
+          case emCommandWindowsAutoMode:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: WINDOWS AUTO MODE!"));        
+              #endif
+              ModuleInterop.QueryCommand(ctSET, F("STATE|MODE|AUTO"),false);               
+          }
+          break;          
+
+          case emCommandWindowsManualMode:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: WINDOWS MANUAL MODE!"));        
+              #endif
+              ModuleInterop.QueryCommand(ctSET, F("STATE|MODE|MANUAL"),false);               
+          }
+          break;
+
+          case emCommandWaterAutoMode:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: WATER AUTO MODE!"));        
+              #endif
+              ModuleInterop.QueryCommand(ctSET, F("WATER|MODE|AUTO"),false);               
+          }
+          break;          
+
+          case emCommandWaterManualMode:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: WATER MANUAL MODE!"));        
+              #endif
+              ModuleInterop.QueryCommand(ctSET, F("WATER|MODE|MANUAL"),false);               
+          }
+          break;
+
+          case emCommandLightAutoMode:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: LIGHT AUTO MODE!"));        
+              #endif
+              ModuleInterop.QueryCommand(ctSET, F("LIGHT|MODE|AUTO"),false);               
+          }
+          break;          
+
+          case emCommandLightManualMode:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: LIGHT MANUAL MODE!"));        
+              #endif
+              ModuleInterop.QueryCommand(ctSET, F("LIGHT|MODE|MANUAL"),false);               
+          }
+          break;
+
+          case emCommandSetOpenTemp:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: SET OPEN TEMP!"));        
+              #endif
+              GlobalSettings* sett = MainController->GetSettings();
+              sett->SetOpenTemp(cePacket->commands[i].param1);              
+          }
+          break;
+
+          case emCommandSetCloseTemp:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: SET CLOSE TEMP!"));        
+              #endif
+              GlobalSettings* sett = MainController->GetSettings();
+              sett->SetCloseTemp(cePacket->commands[i].param1);              
+          }
+          break;               
+
+          case emCommandSetMotorsInterval:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: SET MOTORS INTERVAL!"));        
+              #endif
+              GlobalSettings* sett = MainController->GetSettings();
+              byte b[2]; b[0] = cePacket->commands[i].param1; b[1] = cePacket->commands[i].param2;
+              uint16_t dt; memcpy(&dt,b,2);
+              uint32_t oInterval = dt; oInterval *= 1000;              
+              sett->SetOpenInterval(oInterval);              
+          }
+          break;                    
       } // switch
     
   } // for
@@ -321,8 +410,8 @@ void UniRS485Gate::sendControllerStatePacket()
 
     packet.direction = RS485FromMaster;
     packet.type = RS485ControllerStatePacket;
-
-    void* dest = packet.data;
+  
+    void* dest = &(packet.data);
     ControllerState curState = WORK_STATUS.GetState();
     void* src = &curState;
     memcpy(dest,src,sizeof(ControllerState));
@@ -331,23 +420,144 @@ void UniRS485Gate::sendControllerStatePacket()
     packet.crc8 = crc8(b,sizeof(RS485Packet)-1);
 
     // пишем в шину RS-495 слепок состояния контроллера
-    //RS_485_SERIAL.write((const uint8_t *)&packet,sizeof(RS485Packet));
     writeToStream(&RS_485_SERIAL,(const uint8_t *)&packet,sizeof(RS485Packet));
 
     // теперь ждём завершения передачи
     waitTransmitComplete();
 
      enableReceive();
+
+
+    #ifdef USE_REMOTE_DISPLAY_MODULE
+
+      sendRemoteDisplaySettings(); 
+    
+    #endif // USE_REMOTE_DISPLAY_MODULE
+  
 }
+//-------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_REMOTE_DISPLAY_MODULE
+//-------------------------------------------------------------------------------------------------------------------------------------------------------
+void UniRS485Gate::sendRemoteDisplaySettings()
+{
+  // совсем немного подождём, и будем отправлять настройки контроллера
+    delay(10);
+
+    RS485Packet packet;
+    memset(&packet,0,sizeof(RS485Packet));
+    packet.header1 = 0xAB;
+    packet.header2 = 0xBA;
+    packet.tail1 = 0xDE;
+    packet.tail2 = 0xAD;
+
+    packet.direction = RS485FromMaster;
+    packet.type = RS485SettingsForRemoteDisplay;
+
+    // заполняем пакет данными
+    RemoteDisplaySettingsPacket rds;
+    memset(&rds,0,sizeof(RemoteDisplaySettingsPacket));
+
+      GlobalSettings* sett = MainController->GetSettings();
+      if(sett)
+      {
+        
+        rds.openTemp = sett->GetOpenTemp();
+        rds.closeTemp = sett->GetCloseTemp();
+        rds.interval = sett->GetOpenInterval()/1000;
+        rds.isWindowsOpen = WORK_STATUS.GetStatus(WINDOWS_STATUS_BIT);
+        rds.isWindowAutoMode = WORK_STATUS.GetStatus(WINDOWS_MODE_BIT);      
+        rds.isWaterOn = WORK_STATUS.GetStatus(WATER_STATUS_BIT);
+        rds.isWaterAutoMode = WORK_STATUS.GetStatus(WATER_MODE_BIT);      
+        rds.isLightOn = WORK_STATUS.GetStatus(LIGHT_STATUS_BIT);
+        rds.isLightAutoMode = WORK_STATUS.GetStatus(LIGHT_MODE_BIT);
+        
+      }
+
+      
+      #if defined(USE_TEMP_SENSORS) && (SUPPORTED_WINDOWS > 0)
+      if(WindowModule)
+      {
+        
+        for(size_t k = 0; k < SUPPORTED_WINDOWS; k++)
+        {
+          if(WindowModule->IsWindowOpen(k))
+            rds.windowsStatus |= (1 << k);
+        }
+        
+      }
+      #endif // USE_TEMP_SENSORS
+      
+
+      // и копируем данные в пакет
+      void* pDest = packet.data;
+      void* pSrc = &rds;
+      memcpy(pDest,pSrc,sizeof(RemoteDisplaySettingsPacket));
+
+
+    const byte* bPtr = (const byte*) &packet;
+    packet.crc8 = crc8(bPtr,sizeof(RS485Packet)-1);
+
+
+    enableSend();
+    writeToStream(&RS_485_SERIAL,(const uint8_t *)&packet,sizeof(RS485Packet));
+    waitTransmitComplete();
+    enableReceive();  
+
+}
+//-------------------------------------------------------------------------------------------------------------------------------------------------------
+static RemoteDisplaySensorSetting REMOTE_DISPLAY_SENSOR_SETTINGS[] = { REMOTE_DISPLAY_SENSORS };
+//-------------------------------------------------------------------------------------------------------------------------------------------------------
+void UniRS485Gate::collectSensorsForRemoteDisplay()
+{
+ //  Serial.println("collectSensorsForRemoteDisplay()");
+
+  // тут собираем данные с датчиков для выносных дисплеев
+  remoteDisplaySensors.clear();
+  remoteDisplaySensorsHasDataFlags.clear();
+
+  const uint8_t sensorsCount = sizeof(REMOTE_DISPLAY_SENSOR_SETTINGS)/sizeof(REMOTE_DISPLAY_SENSOR_SETTINGS[0]);
+  
+ // Serial.println(sensorsCount);
+  
+  for(uint8_t i=0;i<sensorsCount;i++)
+  {
+    AbstractModule* mod = MainController->GetModuleByID(REMOTE_DISPLAY_SENSOR_SETTINGS[i].moduleName);
+    if(!mod)
+      continue;
+
+   // Serial.println(REMOTE_DISPLAY_SENSOR_SETTINGS[i].moduleName);
+
+    OneState* os = mod->State.GetState((ModuleStates) REMOTE_DISPLAY_SENSOR_SETTINGS[i].type,REMOTE_DISPLAY_SENSOR_SETTINGS[i].index);
+    bool hasData = false;
+    RemoteDisplaySensorData rds;
+    memset(&rds,0,sizeof(RemoteDisplaySensorData));
+    rds.type = REMOTE_DISPLAY_SENSOR_SETTINGS[i].type;
+
+    if(os)
+    {
+      hasData = os->HasData();
+      if(hasData)
+        os->GetRawData(rds.data);
+    }
+
+    remoteDisplaySensors.push_back(rds);
+    remoteDisplaySensorsHasDataFlags.push_back(hasData);
+      
+  } // for
+  // Serial.println("collectSensorsForRemoteDisplay() DONE.");
+
+}
+//-------------------------------------------------------------------------------------------------------------------------------------------------------
+#endif // USE_REMOTE_DISPLAY_MODULE
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
 void UniRS485Gate::Update(uint16_t dt)
 {
 
   static RS485Packet packet;
 
-  #ifdef USE_RS485_EXTERNAL_CONTROL_MODULE
+  #if defined(USE_RS485_EXTERNAL_CONTROL_MODULE) || defined(USE_REMOTE_DISPLAY_MODULE)
   ///////////////////////////////////////////////////////////////////////
-  // Опрашиваем модули управления
+  // Опрашиваем модули управления или выносной экран
   ///////////////////////////////////////////////////////////////////////
   static uint16_t controlModuleTimer = 0;
   controlModuleTimer += dt;
@@ -379,7 +589,6 @@ void UniRS485Gate::Update(uint16_t dt)
       const byte* b = (const byte*) &packet;
       packet.crc8 = crc8(b,sizeof(RS485Packet)-1);
 
-      //RS_485_SERIAL.write((const uint8_t *)&packet,sizeof(RS485Packet));
       writeToStream(&RS_485_SERIAL,(const uint8_t *)&packet,sizeof(RS485Packet));
     
       // теперь ждём завершения передачи
@@ -470,7 +679,6 @@ void UniRS485Gate::Update(uint16_t dt)
                   packet.type = RS485CommandsToExecuteReceipt;
                   packet.crc8 = crc8(b,sizeof(RS485Packet)-1);
 
-                  //RS_485_SERIAL.write((const uint8_t *)&packet,sizeof(RS485Packet));
                   writeToStream(&RS_485_SERIAL,(const uint8_t *)&packet,sizeof(RS485Packet));
     
                    // теперь ждём завершения передачи
@@ -492,7 +700,126 @@ void UniRS485Gate::Update(uint16_t dt)
   ///////////////////////////////////////////////////////////////////////
   // Конец опроса модулей управления
   ///////////////////////////////////////////////////////////////////////
-  #endif // USE_RS485_EXTERNAL_CONTROL_MODULE
+  #endif // USE_RS485_EXTERNAL_CONTROL_MODULE || USE_REMOTE_DISPLAY_MODULE
+
+
+  
+  ///////////////////////////////////////////////////////////////////////
+  // Посылаем данные датчиков для выносных дисплеев
+  ///////////////////////////////////////////////////////////////////////
+  #ifdef USE_REMOTE_DISPLAY_MODULE
+  static uint16_t remoteDisplayTimer = 0;
+  remoteDisplayTimer += dt;
+  
+  if(remoteDisplayTimer > REMOTE_DISPLAY_UPDATE_INTERVAL)
+  {
+    remoteDisplayTimer = 0;
+   // Serial.println("Collect sensors for remote display...");
+    
+    // тут надо упаковать показания датчиков в один пакет 30 байт, причём делать это циклически.
+    // у нас показания одного датчика - максимум 4 байта, т.е. в пакете поместится 4 датчика,
+    // из расчёта информации "1 байт - тип датчика, 4 байта - его показания". Т.е. на 4
+    // датчика у нас займётся 20 байт, остаётся три байта на флаги: признаки того, с каких датчиков
+    // в пакете есть показания, флаг, что пакет - последний.
+
+    // сначала проверяем, есть ли данные в массиве
+    // если нет - выставляем флаг, что это будет первый пакет, и собираем данные с датчиков.
+    // потом формируем пакет максимум из 4 датчиков.
+    // если после формирования пакета в массиве не осталось данных - выставляем флаг, что пакет - последний.
+    // потом отправляем пакет.
+
+    memset(&packet,0,sizeof(RS485Packet));
+    packet.header1 = 0xAB;
+    packet.header2 = 0xBA;
+    packet.tail1 = 0xDE;
+    packet.tail2 = 0xAD;
+
+    packet.direction = RS485FromMaster;
+    packet.type = RS485SensorDataForRemoteDisplay;
+
+    RemoteDisplaySensorsPacket* data = (RemoteDisplaySensorsPacket*) &(packet.data);
+
+    if(!remoteDisplaySensors.size())
+    {
+       //Serial.println("no data for display, collect it...");
+
+      // нет данных с датчиков, надо выставить, что это первый пакет
+      data->firstOrLastPacket = REMOTE_DISPLAY_FIRST_SENSORS_PACKET;
+      // и собрать показания
+      collectSensorsForRemoteDisplay();
+    }
+
+    // тут заполняем пакет данными. метод remove вектора написан криво, и корректно работает
+    // только для вектора байт, поэтому мы должны корректно сформировать пакет для отправки,
+    // правильно удалив отправленные датчики из очереди.
+    uint8_t stopIndex = min(4,remoteDisplaySensors.size());
+    RemoteDisplaySensors toSend, remaining;
+    Vector<bool> flags, remainingFlags;
+    
+    for(uint8_t kk=0;kk<stopIndex;kk++)
+    {
+      toSend.push_back(remoteDisplaySensors[kk]);
+      flags.push_back(remoteDisplaySensorsHasDataFlags[kk]);
+    }
+
+    for(uint8_t kk=stopIndex;kk<remoteDisplaySensors.size();kk++)
+    {
+      remaining.push_back(remoteDisplaySensors[kk]);
+      remainingFlags.push_back(remoteDisplaySensorsHasDataFlags[kk]);      
+    }
+
+    remoteDisplaySensors = remaining;
+    remoteDisplaySensorsHasDataFlags = remainingFlags;
+
+    for(uint8_t kk=0;kk<toSend.size();kk++)
+    {
+        data->sensorsInPacket++;
+
+        RemoteDisplaySensorData thisDt = toSend[kk];
+        bool thisHasData = flags[kk];
+
+        if(thisHasData)
+        {
+          data->hasDataFlags |= (1 << kk);
+          memcpy(&(data->data[kk]),&thisDt,sizeof(RemoteDisplaySensorData));
+        }
+        else
+          data->data[kk].type = thisDt.type;
+    } // for      
+
+
+    //Serial.println(data->sensorsInPacket);
+
+    // тут заполнили пакет, надо глянуть - последний ли он был?
+    if(!remoteDisplaySensors.size())
+      data->firstOrLastPacket |= REMOTE_DISPLAY_LAST_SENSORS_PACKET; // битовой маской, потому что пакет может быть первым и последним
+
+    // контрольная сумма
+    const byte* b = (const byte*) &packet;
+    packet.crc8 = crc8(b,sizeof(RS485Packet)-1);
+
+      // Serial.println("send packet...");
+
+    // отправляем пакет
+    enableSend();
+
+    writeToStream(&RS_485_SERIAL,(const uint8_t *)&packet,sizeof(RS485Packet));
+
+    // теперь ждём завершения передачи
+    waitTransmitComplete();
+
+     enableReceive();    
+
+   //    Serial.println("packet was sent.");
+
+    
+  } // if
+  
+  #endif // USE_REMOTE_DISPLAY_MODULE
+  ///////////////////////////////////////////////////////////////////////
+  // Конец отсыла датчиков для выносных дисплеев
+  ///////////////////////////////////////////////////////////////////////
+
   
   bool controllerStateWasSentOnThisIteration = false;
 
@@ -971,7 +1298,6 @@ void UniRS485Gate::Update(uint16_t dt)
 
         enableSend();
         // пакет готов к отправке, отправляем его
-        //RS_485_SERIAL.write((const uint8_t *)&packet,sizeof(RS485Packet));
         writeToStream(&RS_485_SERIAL,(const uint8_t *)&packet,sizeof(RS485Packet));
         
         waitTransmitComplete(); // ждём окончания посыла

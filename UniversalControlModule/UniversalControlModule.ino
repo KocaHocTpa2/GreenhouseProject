@@ -153,10 +153,10 @@ volatile byte* rsPacketPtr = (byte*) &rs485Packet;
 volatile byte  rs485WritePtr = 0; // указатель записи в пакет
 PushButton* buttons[7] = {0};
 CommandToExecute currentState[7] = {0,0,0};
+bool anyCommandExistsToExecute = false;
 #ifdef USE_INFO_DIODE
   CorePinScenario blinker;
   unsigned long blinkerTimer = 0;
-  bool anyCommandExistsToExecute = false;
 #endif
 //----------------------------------------------------------------------------------------------------------------
 void RS485Receive()
@@ -223,6 +223,9 @@ byte crc8(const byte *addr, byte len)
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
 void SendCurrentCommandsState(RS485Packet& packet)
 {
+  if(!anyCommandExistsToExecute) // нечего отправлять
+    return;
+    
   packet.direction = RS485FromSlave;
   packet.type = RS485RequestCommandsPacket;
   CommandsToExecutePacket* ce = (CommandsToExecutePacket*) &(packet.data);
@@ -248,17 +251,19 @@ void ProcessReceiptPacket(const RS485Packet& packet)
     memset(currentState,0,sizeof(currentState));  
 
   // сообщаем пользователю, что команда отработана контроллером
-  #ifdef USE_INFO_DIODE
 
      if(anyCommandExistsToExecute)
      {
       anyCommandExistsToExecute = false;
+
+  #ifdef USE_INFO_DIODE
       blinkerTimer = millis();
       blinker.reset();
       blinker.enable();
+  #endif    
+  
      }
       
-  #endif    
 }
 //----------------------------------------------------------------------------------------------------------------
 void ProcessRS485Packet()
@@ -428,9 +433,7 @@ void updateButtons()
         Serial.println(F(" clicked, save command!"));
       #endif
 
-      #ifdef USE_INFO_DIODE
-        anyCommandExistsToExecute = true;
-      #endif
+      anyCommandExistsToExecute = true;
 
       currentState[i].whichCommand = commands[i].whichCommand;
       currentState[i].param1 = commands[i].param1;

@@ -329,13 +329,13 @@ class IdlePageMenuItem : public AbstractLCDMenuItem // класс экрана �
     SdFile workDir, workFile;
     bool SelectNextDirectory(LCDMenu* menu);
     void OpenCurrentSDDirectory(LCDMenu* menu);
-    char* ReadCurrentFile();
+    String ReadCurrentFile();
 #endif
 
     unsigned long rotationTimer;
     int8_t currentSensorIndex;
     String sensorData; // данные с текущего сенсора
-    const char* displayString; // что писать на экране для расшифровки показаний
+    String displayString; // что писать на экране для расшифровки показаний
 
     void RequestSensorData(const WaitScreenInfo& info); // получаем данные с датчика
     void SelectNextSensor(); // выбираем следующий сенсор
