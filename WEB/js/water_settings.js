@@ -38,7 +38,7 @@ WaterChannelSettings.prototype.getWateringDaysString = function(shortFormat)
   return result;
 }
 //-----------------------------------------------------------------------------------------------------
-var WateringSettings = function(wateringOption, wateringDays, wateringTime, startTime, turnOnPump, sensorIndex, stopBorder)
+var WateringSettings = function(wateringOption, wateringDays, wateringTime, startTime, turnOnPump, sensorIndex, stopBorder, toAutoAAM)
 {
   this.WateringOption = parseInt(wateringOption);
   this.WateringDays = parseInt(wateringDays);
@@ -47,6 +47,7 @@ var WateringSettings = function(wateringOption, wateringDays, wateringTime, star
   this.TurnOnPump = parseInt(turnOnPump);
   this.WateringSensorIndex = parseInt(sensorIndex);
   this.WateringStopBorder = parseInt(stopBorder);
+  this.SwitchToAutoAfterMidnight = parseInt(toAutoAAM);
 
   this.Channels = new Array();
   

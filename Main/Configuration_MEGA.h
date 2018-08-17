@@ -345,6 +345,7 @@
 #define WATERING_SENSOR_EEPROM_ADDR 173 // адрес хранения индекса датчика в модуле влажности почв, показания с которого учитываются при поливе, 1 байт
 #define WATERING_STOP_BORDER_EEPROM_ADDR 174 // адрес хранения показаний с датчика, по которым полив на всех каналах выключается, 1 байт
 #define WATERING_CHANNELS_SETTINGS_EEPROM_ADDR 175 // адрес начала настроек каналов полива, 16 каналов*7 байт на канал - 112 байт
+#define WATERING_TURN_TO_AUTOMODE_AFTER_MIDNIGHT_ADDRESS 299 // адрес настройки "переходить в авторежим после полуночи", 1 байт
 #define WATERING_STATUS_EEPROM_ADDR 300 // с какого адреса у нас идут статусы каналов полива, по 5 байт на канал, 100 байт
 
 

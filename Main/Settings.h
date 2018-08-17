@@ -124,6 +124,9 @@ class GlobalSettings
     uint8_t GetTurnOnPump();
     void SetTurnOnPump(uint8_t val);
 
+    uint8_t GetTurnWateringToAutoAfterMidnight();
+    void SetTurnWateringToAutoAfterMidnight(uint8_t val);
+
     uint8_t GetChannelWateringWeekDays(uint8_t idx);
     void SetChannelWateringWeekDays(uint8_t idx, uint8_t val);
 

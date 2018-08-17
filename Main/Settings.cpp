@@ -436,6 +436,22 @@ void GlobalSettings::SetTurnOnPump(uint8_t val)
   MemWrite(TURN_PUMP_EEPROM_ADDR,val);
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+uint8_t GlobalSettings::GetTurnWateringToAutoAfterMidnight()
+{
+  return read8(WATERING_TURN_TO_AUTOMODE_AFTER_MIDNIGHT_ADDRESS,
+  #ifdef SWITCH_TO_AUTOMATIC_WATERING_MODE_AFTER_MIDNIGHT
+  1
+  #else
+  0
+  #endif
+  );
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
+void GlobalSettings::SetTurnWateringToAutoAfterMidnight(uint8_t val)
+{
+  MemWrite(WATERING_TURN_TO_AUTOMODE_AFTER_MIDNIGHT_ADDRESS,val);
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
 void GlobalSettings::SetStartWateringTime(uint16_t val)
 {
   write16(START_WATERING_TIME_EEPROM_ADDR,val);

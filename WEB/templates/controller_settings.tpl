@@ -966,7 +966,11 @@
                          <div id='turn_pump_box' class='hdn'><br clear='left'/><br/>
                           <input type='checkbox' value='1' id='turn_on_pump'><label for='turn_on_pump'>Включать насос при поливе на любом из каналов</label>
                          </div>
-                         
+            
+                         <div id='switch_w_a_m_box' class='hdn'>
+                          <input type='checkbox' value='1' id='switch_w_to_aam'><label for='switch_w_to_aam'>Переходить в автоматический режим после полуночи</label>
+                         </div>
+                                                  
                          <div><br clear='left'/><br/>
                          
                               <button id='save_watering_button' onclick="saveWateringSettings();">Сохранить в контроллер</button>

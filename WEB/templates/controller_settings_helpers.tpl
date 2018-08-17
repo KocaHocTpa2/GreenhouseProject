@@ -1734,11 +1734,15 @@ function saveAllChannelsWateringOptions(watering_option)
    } // if(watering_option == 2)
    
    wateringSettings.TurnOnPump = $('#turn_on_pump').get(0).checked ? 1 : 0;
+   wateringSettings.SwitchToAutoAfterMidnight = $('#switch_w_to_aam').get(0).checked ? 1 : 0;
               
     // теперь можем загружать всё это добро в контроллер
     var cmd = "WATER|T_SETT|" + wateringSettings.WateringOption + '|' +   wateringSettings.WateringDays + '|' +
                wateringSettings.WateringTime + '|' + wateringSettings.StartTime + '|' + wateringSettings.TurnOnPump
-               + '|' + wateringSettings.WateringSensorIndex + '|' + wateringSettings.WateringStopBorder;
+               + '|' + wateringSettings.WateringSensorIndex + '|' + wateringSettings.WateringStopBorder + '|' +
+               wateringSettings.SwitchToAutoAfterMidnight;
+               
+//     console.log(cmd);
                                   
                 controller.queryCommand(false,cmd,function(obj,answer){
                 
@@ -2402,9 +2406,9 @@ controller.OnGetModulesList = function(obj)
               
               if(answer.IsOK)
               {           
-                 // console.log(answer);
+                //  console.log(answer);
               
-                  wateringSettings = new WateringSettings(answer.Params[2],answer.Params[3],answer.Params[4],answer.Params[5],answer.Params[6],answer.Params[7],answer.Params[8]);
+                  wateringSettings = new WateringSettings(answer.Params[2],answer.Params[3],answer.Params[4],answer.Params[5],answer.Params[6],answer.Params[7],answer.Params[8], answer.Params[9]);
                   
                   $('#all_watering_start_hour').val(parseInt(wateringSettings.StartTime/60));
                   $('#all_watering_start_minute').val(parseInt(wateringSettings.StartTime%60));
@@ -2450,8 +2454,10 @@ controller.OnGetModulesList = function(obj)
                                   $('#watering_option').trigger('change');
                                   
                                   $('#turn_pump_box').toggle(wateringSettings.WateringOption > 0);
+                                  $('#switch_w_a_m_box').toggle(wateringSettings.WateringOption > 0);
                                   
                                   $('#turn_on_pump').get(0).checked = wateringSettings.TurnOnPump == 1;
+                                  $('#switch_w_to_aam').get(0).checked = wateringSettings.SwitchToAutoAfterMidnight > 0;
                                   
                                   fillWaterChannelsList(); // заполняем таблицу настроек каналов полива 
                                 } // if

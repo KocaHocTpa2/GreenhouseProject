@@ -790,7 +790,11 @@ void WateringModule::Update(uint16_t dt)
 
     if(currentDOW != t.dayOfWeek)
     {
-      #ifdef SWITCH_TO_AUTOMATIC_WATERING_MODE_AFTER_MIDNIGHT
+      GlobalSettings* sett = MainController->GetSettings();
+      
+      //#ifdef SWITCH_TO_AUTOMATIC_WATERING_MODE_AFTER_MIDNIGHT
+      if(sett->GetTurnWateringToAutoAfterMidnight())
+      {
         // начался новый день недели, принудительно переходим в автоматический режим работы
         // даже если до этого был включен полив командой от пользователя
         SwitchToAutomaticMode();
@@ -799,8 +803,10 @@ void WateringModule::Update(uint16_t dt)
         // в этом случае, если полив был включен пользователем и настали новые сутки - полив не выключится сам,
         // т.к. канал не обновляет своё состояние при выключенном автоуправлении каналами.
         TurnChannelsOff();
-        
-      #endif // SWITCH_TO_AUTOMATIC_WATERING_MODE_AFTER_MIDNIGHT
+
+      } // if(sett->GetTurnWateringToAutoAfterMidnight())
+      
+      //#endif // SWITCH_TO_AUTOMATIC_WATERING_MODE_AFTER_MIDNIGHT
 
       //Тут затирание в EEPROM предыдущего сохранённого значения о статусе полива на всех каналах
       ResetChannelsState();
@@ -867,7 +873,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
         String which = command.GetArg(0);
         //which.toUpperCase();
 
-        if(which == WATER_SETTINGS_COMMAND) // CTSET=WATER|T_SETT|WateringOption|WateringDays|WateringTime|StartTime|TurnOnPump|wateringSensorIndex|wateringStopBorder
+        if(which == WATER_SETTINGS_COMMAND) // CTSET=WATER|T_SETT|WateringOption|WateringDays|WateringTime|StartTime|TurnOnPump|wateringSensorIndex|wateringStopBorder|switchToAutoAfterMidnight
         {
           if(argsCount > 5)
           {
@@ -885,7 +891,16 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
              uint8_t wateringStopBorder = 0;
               if(argsCount > 7)
                 wateringStopBorder = (uint8_t) atoi(command.GetArg(7));
-             
+
+             uint8_t switchToAutoAfterMidnight = 
+             #ifdef SWITCH_TO_AUTOMATIC_WATERING_MODE_AFTER_MIDNIGHT
+             1
+             #else
+             0
+             #endif
+             ;
+              if(argsCount > 8)
+                switchToAutoAfterMidnight = (uint8_t) atoi(command.GetArg(8));             
 
               GlobalSettings* settings = MainController->GetSettings();
 
@@ -899,6 +914,7 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
               settings->SetTurnOnPump(turnOnPump);
               settings->SetWateringSensorIndex(wateringSensorIndex);
               settings->SetWateringStopBorder(wateringStopBorder);
+              settings->SetTurnWateringToAutoAfterMidnight(switchToAutoAfterMidnight);
 
               if(oldWateringOption != wateringOption)
               {
@@ -1238,7 +1254,8 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
           PublishSingleton << (settings->GetStartWateringTime()) << PARAM_DELIMITER;
           PublishSingleton << (settings->GetTurnOnPump()) << PARAM_DELIMITER;
           PublishSingleton << (settings->GetWateringSensorIndex()) << PARAM_DELIMITER;
-          PublishSingleton << (settings->GetWateringStopBorder());
+          PublishSingleton << (settings->GetWateringStopBorder()) << PARAM_DELIMITER;
+          PublishSingleton << (settings->GetTurnWateringToAutoAfterMidnight());
         }
         else
         if(t == WATER_CHANNELS_COUNT_COMMAND)
