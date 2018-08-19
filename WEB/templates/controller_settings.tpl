@@ -555,6 +555,7 @@
       <div class='menuitem hdn' id='SMS_MENU' onclick="content(this);">Список SMS</div>
       <div class='menuitem hdn' id='IOT_MENU' onclick="content(this);">IoT</div>
       <div class='menuitem hdn' id='HTTP_MENU' onclick="content(this);">HTTP API</div>
+      <div class='menuitem hdn' id='SCENE_MENU' onclick="content(this);">Сценарии</div>
       <div class='menuitem' id='COMMAND_PROMPT_MENU' onclick="content(this);">Командная строка</div>
 
       <div class='menuitem hdn' id='ph_calibration_button' onclick="editPHCalibration();">Настройки PH</div>
@@ -646,6 +647,22 @@
                     </div>                        
                                            
             </div>
+            
+            <div class='content hdn' id='SCENE_MENU_CONTENT'>
+                  
+                    <h1><span class='innerh'>Список сценариев</span></h1>
+                    
+                        <div class='button_menu_spacer'>
+                          <select id='scene_list' size=8>
+                          </select>
+                        </div>                   
+                        
+                    <div style='margin-top:10px;'>
+                        <button id='run_scene' onclick='runScene();'>Запустить выбранный сценарий</button>                        
+                        <button id='stop_scene' onclick='stopScene();'>Остановить выбранный сценарий</button>                        
+                    </div>                        
+                                           
+            </div>            
             
             
                   <div class='content hdn' id='IOT_MENU_CONTENT'>

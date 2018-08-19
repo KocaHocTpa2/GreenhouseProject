@@ -62,6 +62,10 @@
 #include "Memory.h"
 #include "InteropStream.h"
 
+#ifdef USE_SCENE_MODULE
+#include "SceneModule.h"
+#endif
+
 #ifdef USE_HTTP_MODULE
 #include "HttpModule.h"
 #endif
@@ -297,6 +301,10 @@ TFTModule tftModule;
 WiFiModule wifiModule;
 #endif
 
+#ifdef USE_SCENE_MODULE
+SceneModule sceneModule;
+#endif
+
 ZeroStreamListener zeroStreamModule;
 AlertModule alertsModule;
 
@@ -492,6 +500,10 @@ void setup()
 
   #ifdef USE_TIMER_MODULE
   controller.RegisterModule(&timerModule);
+  #endif
+
+  #ifdef USE_SCENE_MODULE
+  controller.RegisterModule(&sceneModule);
   #endif
 
   START_LOG(25);
