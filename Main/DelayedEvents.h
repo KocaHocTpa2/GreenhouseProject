@@ -35,6 +35,7 @@ class CoreDelayedEventClass
 
     void update();
     void raise(uint32_t raiseDelay,CoreDelayedEventHandler handler, void* param);
+    void removeByParam(CoreDelayedEventHandler handler, void* param);
 
     static void CoreDelayedEventPinChange(void* param);
 

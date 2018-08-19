@@ -18,6 +18,20 @@ void CoreDelayedEventClass::raise(uint32_t raiseDelay,CoreDelayedEventHandler ha
   signals.push_back(rec);
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+void CoreDelayedEventClass::removeByParam(CoreDelayedEventHandler handler, void* param)
+{
+  CoreDelayedEventsList cpy;
+  for(size_t i=0;i<signals.size();i++)
+  {
+    if(!(signals[i].handler == handler && signals[i].param == param))
+    {
+      cpy.push_back(signals[i]);
+    }
+  }
+
+  signals = cpy;
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
 void CoreDelayedEventClass::update()
 {
     for(size_t i=0;i<signals.size();)

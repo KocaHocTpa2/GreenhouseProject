@@ -4,6 +4,9 @@
 NextionModule display;
 //--------------------------------------------------------------------------------------------------------------------------------------
 const char* CAPTIONS[] = {SENSORS_CAPTIONS};
+#ifdef DISPLAY_SCENE_PAGE
+const char* SCENES_TEXTS[] = {SCENES_CAPTIONS};
+#endif
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifndef USE_NEXTION_HARDWARE_UART
 #include <SoftwareSerial.h>
@@ -14,6 +17,43 @@ SoftwareSerial sSerial(NEXTION_SOFTWARE_UART_RX_PIN, NEXTION_SOFTWARE_UART_TX_PI
 
 Nextion nextion(NEXTION_SERIAL);
 
+String convert(const char* in)
+{  
+    String out;
+    if (in == NULL)
+        return out;
+
+    uint32_t codepoint = 0;
+    while (*in != 0)
+    {
+       uint8_t ch = (uint8_t) (*in);
+        if (ch <= 0x7f)
+            codepoint = ch;
+        else if (ch <= 0xbf)
+            codepoint = (codepoint << 6) | (ch & 0x3f);
+        else if (ch <= 0xdf)
+            codepoint = ch & 0x1f;
+        else if (ch <= 0xef)
+            codepoint = ch & 0x0f;
+        else
+            codepoint = ch & 0x07;
+        ++in;
+        if (((*in & 0xc0) != 0x80) && (codepoint <= 0x10ffff))
+        {
+            if (codepoint <= 255)
+            {
+                out += (char) codepoint;
+            }
+            else
+            {
+              if(codepoint > 0x400)
+                out += (char) (codepoint - 0x360);
+            }
+        }
+    }
+    return out;
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
 void ON_NEXTION_SLEEP(Nextion& sender, bool isSleep)
 {
   display.SetSleep(isSleep);
@@ -43,6 +83,20 @@ void NextionModule::UpdatePageData(uint8_t pageId)
         NextionText currentTimeField("curTime");
         currentTimeField.bind(nextion);
         currentTimeField.hide();
+
+
+        #ifndef DISPLAY_SCENE_PAGE 
+        // скрываем кнопку сцен
+        NextionGUIComponent bt("b1");
+        bt.bind(nextion);
+        bt.hide();
+       #endif
+      }
+      break;
+
+      case NEXTION_SCENE_PAGE:
+      {
+        
       }
       break;
 
@@ -234,6 +288,24 @@ void NextionModule::StringReceived(const char* str)
     return;
   } // if(sPassed.startsWith(F("wtrng")))
   #endif // DISPLAY_WATERING_PAGE
+
+  #ifdef DISPLAY_SCENE_PAGE
+  if(sPassed.startsWith(F("scene")))
+  {
+    // пришла команда управления сценарием, имеет вид scene0=1 (для включения), scene3=0 (для выключения), номера до '=' - номер сцены
+    sPassed.remove(0,5);
+    int idx = sPassed.indexOf("=");
+    String channel = sPassed.substring(0,idx);
+    sPassed.remove(0,idx+1);
+
+    CommandToExecute cmd;
+    cmd.whichCommand = sPassed.toInt() == 1 ? emCommandStartScene : emCommandStopScene;
+    cmd.param1 = channel.toInt();
+    pool.push_back(cmd);
+
+    return;
+  } // if(sPassed.startsWith(F("scene")))
+  #endif // DISPLAY_SCENE_PAGE  
 
   if(sPassed.startsWith(F("topen=")))
   {
@@ -462,14 +534,6 @@ void NextionModule::begin()
     #else
       // сохраняем текущее положение окон
       windowsPositionFlags = 0;
-      /*
-      for(int i=0;i<SUPPORTED_WINDOWS;i++)
-      {
-        bool isWOpen = WindowModule->IsWindowOpen(i);
-        if(isWOpen)
-          windowsPositionFlags |= (1 << i);
-      }
-      */
       // тут настраиваем кнопки управления каналами окон, скрывая ненужные из них
       for(int i=SUPPORTED_WINDOWS;i<16;i++)
       {
@@ -507,30 +571,29 @@ void NextionModule::begin()
       NextionNumberVariable lum("lumvis");
       lum.bind(nextion);
       lum.value(0);
-    #endif          
+    #endif
 
-    /*
-    flags.isWindowsOpen = WORK_STATUS.GetStatus(WINDOWS_STATUS_BIT);
-    flags.isWindowAutoMode = WORK_STATUS.GetStatus(WINDOWS_MODE_BIT);
-    
-    flags.isWaterOn = WORK_STATUS.GetStatus(WATER_STATUS_BIT);
-    flags.isWaterAutoMode = WORK_STATUS.GetStatus(WATER_MODE_BIT);
+      #ifdef DISPLAY_SCENE_PAGE
+        const size_t cntr = sizeof(SCENES_TEXTS)/sizeof(SCENES_TEXTS[0]);
+        for(size_t i=0;i<cntr;i++)
+        {
+          String nm; nm = "sc";
+          nm += (i+1);
+          
+          NextionNumberVariable nv(nm.c_str());
+          nv.bind(nextion);
+          nv.value(1);
 
-    flags.isLightOn = WORK_STATUS.GetStatus(LIGHT_STATUS_BIT);
-    flags.isLightAutoMode = WORK_STATUS.GetStatus(LIGHT_MODE_BIT);
-    */
-   // openTemp = sett->GetOpenTemp();
-   // closeTemp = sett->GetCloseTemp();
+          String tnm; tnm = 't'; tnm += nm;
+          NextionStringVariable sv(tnm.c_str());
+          sv.bind(nextion);
+          sv.text(convert(SCENES_TEXTS[i]).c_str());
+        }
+      #endif
+
+
     
     updateDisplayData();
-
-    /*
-    unsigned long ulI = sett->GetOpenInterval()/1000;
-
-    NextionText txt("page5.motors");
-    txt.bind(nextion);
-    txt.text(String(ulI).c_str());
-    */
 
  }
 //--------------------------------------------------------------------------------------------------------------------------------------
@@ -768,43 +831,6 @@ void NextionModule::update(uint16_t dt)
     displayNextSensorData(1);
   }
   
-}
-//--------------------------------------------------------------------------------------------------------------------------------------
-String convert(const char* in)
-{  
-    String out;
-    if (in == NULL)
-        return out;
-
-    uint32_t codepoint = 0;
-    while (*in != 0)
-    {
-       uint8_t ch = (uint8_t) (*in);
-        if (ch <= 0x7f)
-            codepoint = ch;
-        else if (ch <= 0xbf)
-            codepoint = (codepoint << 6) | (ch & 0x3f);
-        else if (ch <= 0xdf)
-            codepoint = ch & 0x1f;
-        else if (ch <= 0xef)
-            codepoint = ch & 0x0f;
-        else
-            codepoint = ch & 0x07;
-        ++in;
-        if (((*in & 0xc0) != 0x80) && (codepoint <= 0x10ffff))
-        {
-            if (codepoint <= 255)
-            {
-                out += (char) codepoint;
-            }
-            else
-            {
-              if(codepoint > 0x400)
-                out += (char) (codepoint - 0x360);
-            }
-        }
-    }
-    return out;
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 void NextionModule::displayNextSensorData(int8_t dir)

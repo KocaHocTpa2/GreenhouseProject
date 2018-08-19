@@ -233,6 +233,8 @@ void SceneModule::RemoveSceneFromList(uint16_t sceneNumber)
   }
 
     list = lst;
+    // удаляем ждущие события
+    CoreDelayedEvent.removeByParam(NextSceneStep, (void*) sceneNumber);
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 bool SceneModule::IsSceneActive(uint16_t sceneNumber)
@@ -373,7 +375,7 @@ bool  SceneModule::ExecCommand(const Command& command, bool wantAnswer)
             PublishSingleton.Flags.Status = true;
             PublishSingleton = cmd;
             PublishSingleton << PARAM_DELIMITER << command.GetArg(1) << PARAM_DELIMITER << ss.continuousMode << PARAM_DELIMITER;
-            for(int i=0;i< ss.sceneName.length();i++)
+            for(size_t i=0;i< ss.sceneName.length();i++)
             {
               PublishSingleton << WorkStatus::ToHex(ss.sceneName[i]);
             }

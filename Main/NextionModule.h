@@ -44,6 +44,7 @@ typedef struct
 #define NEXTION_OPTIONS_PAGE 5
 #define NEXTION_WINDOWS_CHANNELS_PAGE 6
 #define NEXTION_WATER_CHANNELS_PAGE 7
+#define NEXTION_SCENE_PAGE 9
 //--------------------------------------------------------------------------------------------------------------------------------------
 class NextionModule : public AbstractModule // модуль управления дисплеем Nextion
 {
@@ -69,6 +70,10 @@ class NextionModule : public AbstractModule // модуль управления
 
     #ifdef USE_WATERING_MODULE
     uint16_t waterChannelsState;
+    #endif
+
+    #ifdef USE_SCENE_MODULE
+    Vector<bool> scenesState;
     #endif
   
   public:

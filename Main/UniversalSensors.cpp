@@ -378,7 +378,29 @@ void UniRS485Gate::executeCommands(const RS485Packet& packet)
               uint32_t oInterval = dt; oInterval *= 1000;              
               sett->SetOpenInterval(oInterval);              
           }
-          break;                    
+          break;
+
+          case emCommandStartScene:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: start scene!"));        
+              #endif
+              String cmd = F("SCN|EXEC|");
+              cmd += cePacket->commands[i].param1;
+              ModuleInterop.QueryCommand(ctSET, cmd,false);          
+          }
+          break;
+          
+          case emCommandStopScene:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: stop scene!"));        
+              #endif
+              String cmd = F("SCN|STOP|");
+              cmd += cePacket->commands[i].param1;
+              ModuleInterop.QueryCommand(ctSET, cmd,false);          
+          }
+          break;
       } // switch
     
   } // for

@@ -397,7 +397,9 @@ enum // команды с модуля управления
   emCommandLightManualMode,   // ручной режим работы досветки
   emCommandSetOpenTemp, // установить температуру открытия
   emCommandSetCloseTemp, // установить температуру закрытия
-  emCommandSetMotorsInterval, // установить интервал работы моторов  
+  emCommandSetMotorsInterval, // установить интервал работы моторов
+  emCommandStartScene, // запустить сценарий
+  emCommandStopScene, // остановить сценарий  
 };
 //----------------------------------------------------------------------------------------------------------------
 typedef struct
