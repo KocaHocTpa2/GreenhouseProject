@@ -118,7 +118,7 @@ void SceneModule::AddSceneToList(uint16_t sceneNumber)
 //--------------------------------------------------------------------------------------------------------------------------------------
 void SceneModule::NextSceneStep(void* param)
 {
-  Scenes->ExecuteStep((uint16_t) param);
+  Scenes->ExecuteStep(*((uint16_t*) &param));
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 void SceneModule::ExecuteStep(uint16_t sceneNumber)
@@ -208,7 +208,7 @@ void SceneModule::ExecuteStep(uint16_t sceneNumber)
     Serial.println(duration);
     #endif
 
-    CoreDelayedEvent.raise(dur, NextSceneStep, sceneNumber);
+    CoreDelayedEvent.raise(dur, NextSceneStep, (void*) sceneNumber);
     
   }
   else

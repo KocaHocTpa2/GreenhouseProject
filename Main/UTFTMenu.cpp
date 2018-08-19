@@ -348,6 +348,205 @@ void TFTWateringScreen::draw(TFTMenu* menuManager)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #endif // USE_WATERING_MODULE
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_SCENE_MODULE
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#include "SceneModule.h"
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// TFTSceneScreen
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+TFTSceneScreen::TFTSceneScreen()
+{
+  inited = false;
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+TFTSceneScreen::~TFTSceneScreen()
+{
+ delete screenButtons;
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSceneScreen::initScenes(TFTMenu* menuManager)
+{
+  if(inited)
+    return;
+
+    int screenWidth = menuManager->getDC()->getDisplayXSize();
+    int screenHeight = menuManager->getDC()->getDisplayYSize();
+    
+    // init scenes here
+    uint16_t scenesCount = Scenes->GetScenesCount();
+
+    const uint8_t BUTTONS_PER_ROW = 2;
+    const uint8_t MAX_ROWS = 4;
+    const int  SCENE_BUTTON_WIDTH = 370;
+    const int SCENE_BUTTON_HEIGHT = ALL_CHANNELS_BUTTON_HEIGHT;
+
+    int buttonsTop = INFO_BOX_V_SPACING;
+    // по три кнопки на строку
+    int buttonsLeft = (screenWidth - (SCENE_BUTTON_WIDTH*BUTTONS_PER_ROW) - INFO_BOX_V_SPACING*(BUTTONS_PER_ROW-1))/2;
+
+    int curLeft = buttonsLeft;
+    int curTop = buttonsTop;
+    
+    int rows = scenesCount/BUTTONS_PER_ROW;
+    if(scenesCount%BUTTONS_PER_ROW)
+      rows++;
+
+    if(rows > MAX_ROWS)
+      rows = MAX_ROWS;
+
+
+    // add scene buttons
+    int counter = 0;
+    for(int i=0;i<rows;i++)
+    {
+       for(int k=0;k<BUTTONS_PER_ROW;k++)
+       {
+          if(counter >= scenesCount)
+            break;
+
+          SceneSettings ss = Scenes->GetSceneSettings(counter);
+
+          if(ss.isSceneExists)
+          {
+            SceneButton sb;
+            sb.sceneNumber = counter;
+            sb.sceneName = new char[ss.sceneName.length()+1];
+            sb.sceneRunning = Scenes->IsSceneActive(sb.sceneNumber);
+            strcpy(sb.sceneName,ss.sceneName.c_str());
+
+            // создаём кнопку одной сцены
+            int addedId = screenButtons->addButton( curLeft ,  curTop, SCENE_BUTTON_WIDTH,  SCENE_BUTTON_HEIGHT, sb.sceneName);
+            screenButtons->setButtonBackColor(addedId,sb.sceneRunning ? MODE_ON_COLOR : CHANNELS_BUTTONS_BG_COLOR);
+            screenButtons->setButtonFontColor(addedId,sb.sceneRunning ? CHANNELS_BUTTONS_TEXT_COLOR : CHANNEL_BUTTONS_TEXT_COLOR);
+
+            curLeft += SCENE_BUTTON_WIDTH + INFO_BOX_V_SPACING;
+
+            sb.buttonId = addedId;
+            
+            sceneButtons.push_back(sb);
+          }
+            
+          counter++;
+       }
+
+       curLeft = buttonsLeft;
+       curTop += SCENE_BUTTON_HEIGHT + INFO_BOX_V_SPACING;
+       
+          if(counter >= scenesCount)
+            break;
+    }
+
+    inited = true;
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSceneScreen::setup(TFTMenu* menuManager)
+{
+
+  
+    screenButtons = new UTFT_Buttons_Rus(menuManager->getDC(), menuManager->getTouch(),menuManager->getRusPrinter());
+    screenButtons->setTextFont(BigRusFont);
+    screenButtons->setButtonColors(TFT_CHANNELS_BUTTON_COLORS);
+
+    // первая - кнопка назад
+    backButton = addBackButton(menuManager,screenButtons,0);
+
+    initScenes(menuManager);  
+  
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSceneScreen::update(TFTMenu* menuManager,uint16_t dt)
+{
+ UNUSED(dt);
+
+ 
+ if(screenButtons)
+ {
+    int pressed_button = screenButtons->checkButtons(BuzzerOn);
+   
+    if(pressed_button == backButton)
+    {
+      menuManager->switchToScreen("IDLE");
+      return;
+    }
+
+    if(pressed_button > backButton)
+    {
+      int listIndex = -1;
+
+      for(size_t i=0;i<sceneButtons.size();i++)
+      {
+        if(sceneButtons[i].buttonId == pressed_button)
+        {
+          listIndex = i;
+          break;
+        }
+      }
+
+      if(listIndex != -1)
+      {
+        sceneButtons[listIndex].sceneRunning = !sceneButtons[listIndex].sceneRunning;
+        screenButtons->setButtonBackColor(sceneButtons[listIndex].buttonId,sceneButtons[listIndex].sceneRunning ? MODE_ON_COLOR : CHANNELS_BUTTONS_BG_COLOR);
+        screenButtons->setButtonFontColor(sceneButtons[listIndex].buttonId,sceneButtons[listIndex].sceneRunning ? CHANNELS_BUTTONS_TEXT_COLOR : CHANNEL_BUTTONS_TEXT_COLOR);
+        screenButtons->drawButton(sceneButtons[listIndex].buttonId); 
+        
+        if(sceneButtons[listIndex].sceneRunning)
+        {
+          Scenes->ExecuteScene(sceneButtons[listIndex].sceneNumber);
+        }
+        else
+        {
+          Scenes->StopScene(sceneButtons[listIndex].sceneNumber);          
+        }
+      }
+      
+
+      return;
+    }
+
+     updateSceneButtons();
+
+     
+ } // if(screenButtons)
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSceneScreen::updateSceneButtons()
+{
+    // обновляем состояние кнопок
+    static uint32_t sceneUpdateTimer = 0;
+    uint32_t now = millis();
+    if(now - sceneUpdateTimer > 500)
+    {
+      for(size_t i=0;i<sceneButtons.size();i++)
+      {
+        bool nowRunning = Scenes->IsSceneActive(sceneButtons[i].sceneNumber);
+        if(nowRunning != sceneButtons[i].sceneRunning)
+        {
+          sceneButtons[i].sceneRunning = nowRunning;
+          screenButtons->setButtonBackColor(sceneButtons[i].buttonId,sceneButtons[i].sceneRunning ? MODE_ON_COLOR : CHANNELS_BUTTONS_BG_COLOR);
+          screenButtons->setButtonFontColor(sceneButtons[i].buttonId,sceneButtons[i].sceneRunning ? CHANNELS_BUTTONS_TEXT_COLOR : CHANNEL_BUTTONS_TEXT_COLOR);
+          screenButtons->drawButton(sceneButtons[i].buttonId);          
+        }
+        
+      } // for
+
+      sceneUpdateTimer = millis();
+    }  
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSceneScreen::draw(TFTMenu* menuManager)
+{
+  UNUSED(menuManager);
+
+  if(screenButtons)
+  {
+    updateSceneButtons();
+    screenButtons->drawButtons(drawButtonsYield);
+  }
+
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#endif // USE_SCENE_MODULE
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_LUMINOSITY_MODULE
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // TFTLightScreen
@@ -1287,6 +1486,10 @@ void TFTIdleScreen::drawLightStatus(TFTMenu* menuManager)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #endif
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_SCENE_MODULE
+extern imagedatatype tft_scene_button[];
+#endif
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 extern imagedatatype tft_options_button[];
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 TFTIdleScreen::TFTIdleScreen() : AbstractTFTScreen()
@@ -1716,6 +1919,10 @@ void TFTIdleScreen::setup(TFTMenu* menuManager)
   #ifdef USE_LUMINOSITY_MODULE
     availStatusBoxes++;
   #endif
+  
+  #ifdef USE_SCENE_MODULE
+  availButtons++;
+  #endif
 
   int curInfoBoxLeft;
 
@@ -1802,6 +2009,11 @@ void TFTIdleScreen::setup(TFTMenu* menuManager)
     curButtonLeft += TFT_IDLE_SCREEN_BUTTON_WIDTH + TFT_IDLE_SCREEN_BUTTON_SPACING;
   #endif
 
+  #ifdef USE_SCENE_MODULE
+    sceneButton = screenButtons->addButton( curButtonLeft ,  buttonsTop, TFT_IDLE_SCREEN_BUTTON_WIDTH,  TFT_IDLE_SCREEN_BUTTON_HEIGHT, tft_scene_button ,BUTTON_BITMAP);
+    curButtonLeft += TFT_IDLE_SCREEN_BUTTON_WIDTH + TFT_IDLE_SCREEN_BUTTON_SPACING;
+  #endif  
+
     optionsButton = screenButtons->addButton( curButtonLeft ,  buttonsTop, TFT_IDLE_SCREEN_BUTTON_WIDTH,  TFT_IDLE_SCREEN_BUTTON_HEIGHT, tft_options_button ,BUTTON_BITMAP);
     curButtonLeft += TFT_IDLE_SCREEN_BUTTON_WIDTH + TFT_IDLE_SCREEN_BUTTON_SPACING;
   
@@ -1847,6 +2059,14 @@ void TFTIdleScreen::update(TFTMenu* menuManager,uint16_t dt)
   if(pressed_button == lightButton)
   {
     menuManager->switchToScreen("LIGHT");
+    return;
+  }
+#endif  
+
+#ifdef USE_SCENE_MODULE
+  if(pressed_button == sceneButton)
+  {
+    menuManager->switchToScreen("SCN");
     return;
   }
 #endif  
@@ -2004,6 +2224,16 @@ void TFTMenu::setup()
     lsi.screen = lightScreen;  
     screens.push_back(lsi);
   #endif
+
+  // добавляем экран управления сценариями
+  #ifdef USE_SCENE_MODULE
+    AbstractTFTScreen* sceneScreen = new TFTSceneScreen();
+    sceneScreen->setup(this);
+    TFTScreenInfo scsi; 
+    scsi.screenName = "SCN"; 
+    scsi.screen = sceneScreen;  
+    screens.push_back(scsi);
+  #endif  
 
   // добавляем экран настроек
     AbstractTFTScreen* settingsScreen = new TFTSettingsScreen();

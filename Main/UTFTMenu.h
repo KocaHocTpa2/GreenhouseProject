@@ -163,6 +163,10 @@ private:
   void drawLightStatus(TFTMenu* menuManager);
 #endif
 
+#ifdef USE_SCENE_MODULE
+  int sceneButton;
+#endif
+
   int optionsButton;
     
 };
@@ -248,6 +252,44 @@ class TFTLightScreen : public AbstractTFTScreen
 
 };
 #endif
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_SCENE_MODULE
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+typedef struct
+{
+  uint16_t sceneNumber;
+  char* sceneName;
+  bool sceneRunning;
+  int buttonId;
+  
+} SceneButton;
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+typedef Vector<SceneButton> SceneButtons;
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+class TFTSceneScreen : public AbstractTFTScreen
+{
+  public:
+  
+    TFTSceneScreen();
+    ~TFTSceneScreen();
+    
+    void setup(TFTMenu* menuManager);
+    void update(TFTMenu* menuManager,uint16_t dt);
+    void draw(TFTMenu* menuManager);
+
+    private:
+      int backButton;
+      UTFT_Buttons_Rus* screenButtons;
+
+      bool inited;
+      void initScenes(TFTMenu* menuManager);
+      SceneButtons sceneButtons;
+      void updateSceneButtons();
+
+
+};
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#endif // USE_SCENE_MODULE
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 class TFTSettingsScreen : public AbstractTFTScreen
 {
