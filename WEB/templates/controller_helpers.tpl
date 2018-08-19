@@ -145,6 +145,98 @@ function setWaterChannelButtonState(button, channelNumber, channelEnabled)
 
 }
 //-----------------------------------------------------------------------------------------------------
+var excludedPins = new Array(); // список исключенных пинов
+//-----------------------------------------------------------------------------------------------------
+function inExcludedList(pin)
+{
+  for(var i=0;i<excludedPins.length;i++)
+  {  
+    if(excludedPins[i].pin_number == pin)
+      return true;
+  }
+  return false;
+}
+//-----------------------------------------------------------------------------------------------------
+var pinsNames = new Array();
+//-----------------------------------------------------------------------------------------------------
+function getPinName(pinNumber)
+{
+  for(var i=0;i<pinsNames.length;i++)
+  {
+    if(pinsNames[i].pin_number == pinNumber)
+      return pinsNames[i].pin_name;
+  }
+  
+  return "" + pinNumber;
+}
+//-----------------------------------------------------------------------------------------------------
+function editPin(btn)
+{
+  var pinNumber = btn.attr('data-pin-number');
+  
+  $("#edit_pin_name").val(btn.parent().find('button').html());
+  
+  $("#pin_edit_dialog").dialog({modal:true, width: 'auto', buttons: [{text: "Изменить имя", click: function(){
+  
+    var new_pin_name = $("#edit_pin_name").val();
+    
+    if(new_pin_name != '')
+    {
+      btn.parent().find('button').html(new_pin_name);
+      var found = false;
+      for(var i=0;i<pinsNames.length;i++)
+      {
+        if(pinsNames[i].pin_number == pinNumber)
+        {
+          pinsNames[i].pin_name = new_pin_name;
+          found = true;
+          break;
+        }
+      } // for
+      if(!found)
+      {
+        var o = {pin_number: pinNumber, pin_name: new_pin_name};
+        pinsNames.push(o);
+      }
+      
+      // добавляем имя пина
+      controller.queryServerScript("/x_add_pin_name.php",{pin:  pinNumber, name: new_pin_name}, function(obj,result){});
+    }
+    
+    $(this).dialog("close");
+
+  
+  } }
+
+  
+  , {text: "Скрыть пин", click: function(){
+  
+      var _this = this;
+
+      promptMessage("Вы уверены, что хотите скрыть пин?", function(){
+      
+        btn.parent().hide();
+        controller.queryServerScript("/x_add_excluded_pin.php",{pin: pinNumber }, function(obj,result){});
+        $(_this).dialog("close");
+        
+          if(!inExcludedList(pinNumber))
+          {
+            var o = {pin_number : pinNumber};
+            excludedPins.push(o);
+          }
+      
+      });
+  
+  } }
+      
+  
+  , {text: "Отмена", click: function(){$(this).dialog("close");} }
+ 
+  
+  ] });     
+  
+}
+//-----------------------------------------------------------------------------------------------------
 var lastIsOnline = controller.IsOnline();
 // обработчик онлайн-статуса контроллера
 controller.OnStatus = function(obj)
@@ -275,7 +367,7 @@ controller.OnStatus = function(obj)
       var pinsCount = parseInt(state.length*4);
       var bytesCount = parseInt(pinsCount/8);
               
-      var buttons = list.children('button');
+      var buttons = list.children('div');
       var countButtons = buttons.length;
       
       if(countButtons > pinsCount)
@@ -286,8 +378,29 @@ controller.OnStatus = function(obj)
       
       while(countButtons < pinsCount)
       {
+        var pDiv = $("<div/>", {'class' : 'pin-button-parent'});
         var button = $("<button/>",{'data-pin-id' : countButtons, 'class' : 'pin-button'});
-        button.appendTo(list);
+        button.appendTo(pDiv);
+        button.button();
+        
+        pDiv.off('mouseover').mouseover(function(){
+                
+        $(this).find('.pin-close-icon').css('visibility','visible');
+        
+        }).off('mouseout').mouseout(function(){
+            $(this).find('.pin-close-icon').css('visibility','hidden');
+        });
+        
+        var closeIcon = $("<img/>",{'class' : 'pin-close-icon', 'data-pin-number' : countButtons, 'src' : '/images/pen.png'});
+        closeIcon.appendTo(pDiv);
+        
+        closeIcon.off('click').click(function(){
+        
+          var btn = $(this);
+          editPin(btn);        
+        });
+        
+        pDiv.appendTo(list);
         countButtons++;
       }
       
@@ -302,8 +415,14 @@ controller.OnStatus = function(obj)
       for(var i=0;i<pinsCount;i++)
       {
         var button = list.find("[data-pin-id=" + i + "]");
-        button.button();       
-        button.html(i);
+        //button.button();
+        
+        if(inExcludedList(i))
+        {
+          button.parent().hide();
+        }
+               
+        button.html(getPinName(i));
         button.removeClass('pin-on');
         button.attr('data-pin-on', 0);
         
@@ -526,7 +645,18 @@ controller.OnQueryTemperatureSettings = waitForTempAndMotorData;
 // событие "Получен список модулей в прошивке"
 controller.OnGetModulesList = function(obj)
 {
-  
+
+        controller.queryServerScript("/x_get_excluded_pins.php",{}, function(obj,result){
+           
+          excludedPins = result.pins;
+                     
+        });
+        
+        controller.queryServerScript("/x_get_pin_names.php",{}, function(obj,result){
+           
+          pinsNames = result.pins;
+                     
+        });  
 };
 //-----------------------------------------------------------------------------------------------------
 // событие "Получен и разобран слепок состояния контроллера", приходит после вызова controller.queryState()

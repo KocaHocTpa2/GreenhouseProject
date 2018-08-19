@@ -28,6 +28,15 @@
 </div>
 
 
+<div id="pin_edit_dialog" title="Редактировать пин" class='hdn'>
+  <form>
+  Имя пина:<br/>
+  <input type='text' id='edit_pin_name' maxlength='50' value='' style='width:100%;'/><br/>
+  </form>
+</div>
+
+
+
 {include file='controller_head.tpl' additional_text=', показания' room='status'}
 
 <div id='wait_block' style='padding-left:20px;'>

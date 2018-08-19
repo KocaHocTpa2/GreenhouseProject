@@ -131,9 +131,42 @@ LABEL {
 .pin-button 
 {
   /*display: block !important;*/
-  padding:4px !important;
+  padding:8px !important;
   margin-right:4px !important;
   margin-top:4px !important;
+  min-width: 60px !important;
+}
+
+.pin-button-parent {
+  display: inline-block;
+}
+
+.pin-close-icon {
+    float:right;
+    display:inline-block;
+    padding:2px 5px;
+    background:#ccc;
+    cursor: pointer;
+    z-order: 1000000;
+    position:relative;
+    top:5px;
+    right:20px;
+    width:16px;
+    height:16px;
+    background-color:transparent;
+    border:1px solid transparent;
+    visibility:hidden;
+}
+.pin-close-icon:hover {
+    float:right;
+    display:inline-block;
+    padding:2px 5px;
+    background:#ccc;
+    color:#fff;
+    cursor: pointer;
+    background-color:transparent;
+    border:1px solid #808080;
+    border-radius:4px;
 }
 
 .pin-on
