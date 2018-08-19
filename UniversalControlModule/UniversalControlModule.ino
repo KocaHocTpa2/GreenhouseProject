@@ -85,6 +85,34 @@ BUTTON commands[7] = {
   // кнопка "Перейти в автоматический режим работы" на пине номер A2
   // {A2, emCommandAutoMode, 0,0}
 
+  // кнопка "Перейти в автоматический режим работы окон" на пине номер A2
+  // {A2, emCommandWindowsAutoMode, 0,0}
+
+  // кнопка "Перейти в ручной режим работы окон" на пине номер A2
+  // {A2, emCommandWindowsManualMode, 0,0}
+
+  // кнопка "Перейти в автоматический режим работы полива" на пине номер A2
+  // {A2, emCommandWaterAutoMode, 0,0}
+
+  // кнопка "Перейти в ручной режим работы полива" на пине номер A2
+  // {A2, emCommandWaterManualMode, 0,0}
+  
+  // кнопка "Перейти в автоматический режим работы досветки" на пине номер A2
+  // {A2, emCommandLightAutoMode, 0,0}
+
+  // кнопка "Перейти в ручной режим работы досветки" на пине номер A2
+  // {A2, emCommandLightManualMode, 0,0}
+
+  // кнопка "Запустить сценарий номер 1" на пине номер A2
+  // {A2, emCommandStartScene, 0,0}
+
+  // кнопка "Запустить сценарий номер 2" на пине номер A2
+  // {A2, emCommandStartScene, 1,0}
+
+  // кнопка "Остановить сценарий номер 3" на пине номер A2
+  // {A2, emCommandStopScene, 2,0}
+
+
   // далее идут настройки кнопок по умолчанию, поменяйте под ваши потребности
   {6, emCommandOpenWindows, 0,0}, // кнопка "Открыть все окна" на пине номер 6
   {3, emCommandCloseWindows,0,0}, // кнопка "Закрыть все окна" на пине номер 3
@@ -495,6 +523,38 @@ void updateButtons()
           break;
 
           case emCommandAutoMode:
+          break;
+
+          case emCommandWindowsAutoMode:
+            commands[i].whichCommand = emCommandWindowsManualMode;
+          break;
+
+          case emCommandWindowsManualMode:
+            commands[i].whichCommand = emCommandWindowsAutoMode;
+          break;
+
+          case emCommandWaterAutoMode:
+            commands[i].whichCommand = emCommandWaterManualMode;
+          break;
+
+          case emCommandWaterManualMode:
+            commands[i].whichCommand = emCommandWaterAutoMode;
+          break;
+
+          case emCommandLightAutoMode:
+            commands[i].whichCommand = emCommandLightManualMode;
+          break;
+
+          case emCommandLightManualMode:
+            commands[i].whichCommand = emCommandLightAutoMode;
+          break;
+
+          case emCommandStartScene:
+            commands[i].whichCommand = emCommandStopScene;
+          break;
+
+          case emCommandStopScene:
+            commands[i].whichCommand = emCommandStartScene;
           break;
           
         } // switch

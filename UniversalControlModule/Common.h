@@ -49,6 +49,17 @@ enum // команды с модуля управления
   emCommandPinOn,             // включить пин
   emCommandPinOff,            // выключить пин
   emCommandAutoMode,          // перейти в автоматический режим работы
+  emCommandWindowsAutoMode,   // автоматический режим работы окон
+  emCommandWindowsManualMode,   // ручной режим работы окон
+  emCommandWaterAutoMode,   // автоматический режим работы полива
+  emCommandWaterManualMode,   // ручной режим работы полива
+  emCommandLightAutoMode,   // автоматический режим работы досветки
+  emCommandLightManualMode,   // ручной режим работы досветки
+  emCommandSetOpenTemp, // установить температуру открытия
+  emCommandSetCloseTemp, // установить температуру закрытия
+  emCommandSetMotorsInterval, // установить интервал работы моторов
+  emCommandStartScene, // запустить сценарий
+  emCommandStopScene, // остановить сценарий    
 };
 //----------------------------------------------------------------------------------------------------------------
 typedef struct
