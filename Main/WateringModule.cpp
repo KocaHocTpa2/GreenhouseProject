@@ -689,6 +689,36 @@ void WateringModule::SwitchToManualMode()
   #endif    
 }
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void WateringModule::Skip() // пропускаем полив за сегодня
+{
+  WTR_LOG(F("[WTR] - skip watering for today\r\n"));
+
+  uint8_t today = 0xFF;
+  unsigned long max_work_time =  0xFFFFFFFF;
+
+ #ifdef USE_DS3231_REALTIME_CLOCK
+
+    RealtimeClock watch =  MainController->GetClock();
+    RTCTime t =   watch.getTime();
+    today = t.dayOfWeek; // запоминаем текущий день недели
+     max_work_time =  0xFFFFFFFE;
+     
+  #endif
+      
+  // выставляем в EEPROM максимальное значение полива по каналам за сегодня
+  uint16_t wrAddr = WATERING_STATUS_EEPROM_ADDR;
+  uint8_t recordsCount = WATER_RELAYS_COUNT + 1;
+  
+  for(uint8_t i=0;i<recordsCount;i++)
+  {
+    MemWrite(wrAddr++,today);
+    byte* readAddr = (byte*) &max_work_time;
+      for(int k=0;k<4;k++)
+        MemWrite(wrAddr++,*readAddr++);    
+  }
+  
+}
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void WateringModule::ResetChannelsState()
 {
   WTR_LOG(F("[WTR] - reset channels state\r\n"));
@@ -999,6 +1029,28 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
             PublishSingleton = PARAMS_MISSED;            
            }
         }
+        else
+        if(which = F("SKIP")) // пропустить полив за сегодня
+        {
+            Skip();
+
+            // состояние управления поливом изменилось, мы должны перезагрузить для всех каналов настройки из EEPROM
+             #if WATER_RELAYS_COUNT > 0
+
+              for(byte i=0;i<WATER_RELAYS_COUNT;i++)
+              {
+                  wateringChannels[i].LoadState();
+              } // for
+            
+              PublishSingleton.Flags.Status = true;
+              PublishSingleton = which; 
+              PublishSingleton << PARAM_DELIMITER << REG_SUCC;
+              
+            #else
+              PublishSingleton = UNKNOWN_COMMAND;
+            #endif
+          
+        } // SKIP
         else
         if(which == F("DURATION_ALL")) // установить продолжительность полива для всех каналов, CTSET=WATER|DURATION_ALL|Minutes (0-65535)
         {
