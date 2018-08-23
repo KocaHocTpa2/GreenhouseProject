@@ -219,6 +219,7 @@ class TFTWateringScreen : public AbstractTFTScreen
     private:
       int backButton;
       UTFT_Buttons_Rus* screenButtons;
+      int skipButton;
 
       bool inited;
       uint16_t lastWaterChannelsState; // последнее состояние полива

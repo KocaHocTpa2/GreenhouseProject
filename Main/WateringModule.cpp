@@ -311,7 +311,7 @@ void WateringChannel::Update(uint16_t _dt,WateringWorkMode currentWorkMode, cons
 
         if(IsActive()) // если канал был включён, значит, он будет выключен, и мы однократно запишем в EEPROM нужное значение
         {
-         SaveState();
+         SaveState(flags.wateringTimer);
         } // if(IsActive())
 
         Off(); // выключаем реле
@@ -365,6 +365,10 @@ void WateringChannel::DoLoadState(byte addressOffset)
       
       if(savedDOW == today) // поливали на этом канале сегодня, выставляем таймер канала так, как будто он уже поливался сколько-то времени
       {
+        WTR_LOG(F("[WTR] - Apply watering timer for today: "));
+        WTR_LOG(String(savedWorkTime));
+        WTR_LOG(F("\r\n"));
+        
         flags.wateringTimer = savedWorkTime + 1;
       }
       else
@@ -689,7 +693,7 @@ void WateringModule::SwitchToManualMode()
   #endif    
 }
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void WateringModule::Skip() // пропускаем полив за сегодня
+void WateringModule::Skip(bool skipOrReset) // пропускаем полив за сегодня
 {
   WTR_LOG(F("[WTR] - skip watering for today\r\n"));
 
@@ -701,7 +705,7 @@ void WateringModule::Skip() // пропускаем полив за сегодн
     RealtimeClock watch =  MainController->GetClock();
     RTCTime t =   watch.getTime();
     today = t.dayOfWeek; // запоминаем текущий день недели
-     max_work_time =  0xFFFFFFFE;
+    max_work_time =  skipOrReset ? 0xFFFFF0F0 : 0;
      
   #endif
       
@@ -1030,9 +1034,9 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
            }
         }
         else
-        if(which = F("SKIP")) // пропустить полив за сегодня
+        if(which == F("SKIP")) // пропустить полив за сегодня
         {
-            Skip();
+            Skip(true);
 
             // состояние управления поливом изменилось, мы должны перезагрузить для всех каналов настройки из EEPROM
              #if WATER_RELAYS_COUNT > 0
@@ -1051,6 +1055,28 @@ bool  WateringModule::ExecCommand(const Command& command, bool wantAnswer)
             #endif
           
         } // SKIP
+        else
+        if(which == F("RESET")) // сбросить таймеры полива на сегодня
+        {
+            Skip(false);
+
+            // состояние управления поливом изменилось, мы должны перезагрузить для всех каналов настройки из EEPROM
+             #if WATER_RELAYS_COUNT > 0
+
+              for(byte i=0;i<WATER_RELAYS_COUNT;i++)
+              {
+                  wateringChannels[i].LoadState();
+              } // for
+            
+              PublishSingleton.Flags.Status = true;
+              PublishSingleton = which; 
+              PublishSingleton << PARAM_DELIMITER << REG_SUCC;
+              
+            #else
+              PublishSingleton = UNKNOWN_COMMAND;
+            #endif
+          
+        } // RESET
         else
         if(which == F("DURATION_ALL")) // установить продолжительность полива для всех каналов, CTSET=WATER|DURATION_ALL|Minutes (0-65535)
         {

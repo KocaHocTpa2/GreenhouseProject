@@ -275,6 +275,11 @@
                          <div id='waterChannelsState' class='hdn bottom-spacer'>
                          
                          </div>
+                         
+                         <div>
+                          <button id="skip_watering_btn" onclick="skipTodayWatering();">Пропустить полив сегодня</button>
+                         </div>
+                        
                     
                                
                         

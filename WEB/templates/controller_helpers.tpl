@@ -237,6 +237,15 @@ function editPin(btn)
   
 }
 //-----------------------------------------------------------------------------------------------------
+function skipTodayWatering()
+{
+  controller.queryCommand(false,"WATER|SKIP",function(obj,answer){
+  
+    showMessage("Полив на сегодня пропущен.");
+    
+  });
+}
+//-----------------------------------------------------------------------------------------------------
 var lastIsOnline = controller.IsOnline();
 // обработчик онлайн-статуса контроллера
 controller.OnStatus = function(obj)
@@ -458,54 +467,12 @@ controller.OnStatus = function(obj)
             });               
         
         });
-        /*
 
-        var channelEnabled = statemask.substring(i,i+1) == '1' ? true : false;        
-        button.attr('data-channel-enabled', channelEnabled ? 1 : 0);
-        setWaterChannelButtonState(button,(i+1),channelEnabled);
-              
-        button.off('click').click(function(){
-        
-          var btn = $(this);
-          var channelId = parseInt(btn.attr('data-channel-id'));
-          var isEnabled = parseInt(btn.attr('data-channel-enabled')) == 1;
-          
-          //btn.attr('disabled','disabled'); 
-          //btn.removeClass('water-on').removeClass('water-off').addClass('water-intermediate');
-          
-          btn.attr('data-channel-enabled', !isEnabled ? 1 : 0);
-          
-          setWaterChannelButtonState(btn,(channelId+1),!isEnabled);
-          
-          var command = "WATER|";
-          if(isEnabled)
-            command += "OFF|";
-          else
-            command += "ON|";
-            
-            command += channelId;
-            
-            controller.queryCommand(false,command,function(obj,answer){});
-        
-        });
-        */
         
       } // for
       
 
   });
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
   
   controller.queryCommand(true,'STATE|WINDOW|STATEMASK',function(obj,answer){
@@ -838,7 +805,7 @@ window.setInterval(updateControllerData,5000); // повторяем опрос 
     });
 
 
-  $( "#toggler_windows, #toggler_light, #toggler_water" ).button({
+  $( "#toggler_windows, #toggler_light, #toggler_water, #skip_watering_btn" ).button({
       icons: {
         primary: "ui-icon-gear"
       }

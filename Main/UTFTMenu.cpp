@@ -161,14 +161,14 @@ void TFTWateringScreen::setup(TFTMenu* menuManager)
     screenButtons->setTextFont(BigRusFont);
     screenButtons->setButtonColors(TFT_CHANNELS_BUTTON_COLORS);
 
-    // первая - кнопка назад
-    backButton = addBackButton(menuManager,screenButtons,0);
- 
     int buttonsTop = INFO_BOX_V_SPACING;
     int screenWidth = menuManager->getDC()->getDisplayXSize();
-
-    // добавляем кнопки для управления всеми каналами
     int allChannelsLeft = (screenWidth - (ALL_CHANNELS_BUTTON_WIDTH*3) - INFO_BOX_V_SPACING*2)/2;
+
+    // первая - кнопка назад
+    backButton = addBackButton(menuManager,screenButtons,allChannelsLeft);
+ 
+    // добавляем кнопки для управления всеми каналами
     screenButtons->addButton( allChannelsLeft ,  buttonsTop, ALL_CHANNELS_BUTTON_WIDTH,  ALL_CHANNELS_BUTTON_HEIGHT, TURN_ON_ALL_WATER_LABEL);
     allChannelsLeft += ALL_CHANNELS_BUTTON_WIDTH + INFO_BOX_V_SPACING;
 
@@ -203,6 +203,10 @@ void TFTWateringScreen::setup(TFTMenu* menuManager)
 
 
     } // for
+
+    // добавляем кнопку "Пропустить полив за сегодня"
+    int skipButtonTop = menuManager->getDC()->getDisplayYSize() - TFT_IDLE_SCREEN_BUTTON_HEIGHT; // координата Y для кнопки "Назад"
+    skipButton = screenButtons->addButton(200, skipButtonTop, CHANNELS_BUTTON_WIDTH*2, ALL_CHANNELS_BUTTON_HEIGHT, "ПРОПУСТИТЬ СЕГОДНЯ");
     
   
     #endif // WATER_RELAYS_COUNT > 0
@@ -257,6 +261,15 @@ void TFTWateringScreen::update(TFTMenu* menuManager,uint16_t dt)
       menuManager->resetIdleTimer();
       yield();
       return;
+    }
+
+    if(pressed_button == skipButton)
+    {
+      // пропустить полив сегодня
+      ModuleInterop.QueryCommand(ctSET,F("WATER|SKIP"),false);
+      menuManager->resetIdleTimer();
+      yield();
+      return;      
     }
 
     if(pressed_button > 3)
