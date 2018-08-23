@@ -5,8 +5,11 @@
 #include "InteropStream.h"
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_LUMINOSITY_MODULE
-
 #include <Wire.h>
+#ifdef LIGHT_AVERAGING_ENABLED
+  #include "TinyVector.h"
+  typedef Vector<long> LightAverageList;
+#endif
 //--------------------------------------------------------------------------------------------------------------------------------------
 enum
 {
@@ -78,6 +81,14 @@ class LuminosityModule : public AbstractModule // модуль управлен�
   BlinkModeInterop blinker;
 #endif
 
+#ifdef LIGHT_AVERAGING_ENABLED
+    LightAverageList averageLists[4];
+    long GetAverageValue(long lum,uint8_t sensorIndex);
+#endif
+
+#ifdef LIGHT_HARBORING_ENABLED
+    long ApplyHarboring(long lum);
+#endif    
 
   void* lightSensors[4]; // массив датчиков
 
@@ -86,7 +97,13 @@ class LuminosityModule : public AbstractModule // модуль управлен�
     
   public:
     LuminosityModule() : AbstractModule("LIGHT")
-    , lastUpdateCall(678) // разнесём опросы датчиков по времени
+    , lastUpdateCall(
+      #if LUMINOSITY_UPDATE_INTERVAL > 678
+        LUMINOSITY_UPDATE_INTERVAL - 678
+      #else
+        0
+      #endif
+      ) // разнесём опросы датчиков по времени
     {}
 
     bool ExecCommand(const Command& command, bool wantAnswer);
