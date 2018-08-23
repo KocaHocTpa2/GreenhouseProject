@@ -399,7 +399,9 @@ enum // команды с модуля управления
   emCommandSetCloseTemp, // установить температуру закрытия
   emCommandSetMotorsInterval, // установить интервал работы моторов
   emCommandStartScene, // запустить сценарий
-  emCommandStopScene, // остановить сценарий  
+  emCommandStopScene, // остановить сценарий
+  emCommandWaterSkip, // пропустить полив на сегодня    
+    
 };
 //----------------------------------------------------------------------------------------------------------------
 typedef struct

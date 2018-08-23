@@ -386,6 +386,16 @@ void NextionModule::StringReceived(const char* str)
   #endif // DISPLAY_WINDOWS_PAGE
 
   #ifdef DISPLAY_WATERING_PAGE
+
+  if(!strcmp_P(str,(const char*)F("wtr_skip")))
+  {
+    // попросили пропустить полив на сегодня
+    CommandToExecute cmd;
+    cmd.whichCommand = emCommandWaterSkip;
+    pool.push_back(cmd);  
+    return;
+  }
+  
   if(!strcmp_P(str,(const char*)F("wtr_on")))
   {
     // попросили включить полив

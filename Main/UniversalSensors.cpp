@@ -211,6 +211,16 @@ void UniRS485Gate::executeCommands(const RS485Packet& packet)
           }
           break;
 
+          case emCommandWaterSkip:
+          {
+              #ifdef RS485_DEBUG
+                DEBUG_LOGLN(F("RS485: Water skip!"));        
+              #endif
+              ModuleInterop.QueryCommand(ctSET, F("WATER|SKIP"),false);          
+            
+          }
+          break;
+
           case emCommandWaterOff:
           {
               #ifdef RS485_DEBUG

@@ -389,6 +389,14 @@ if(sPassed.startsWith(F("scene")))
   #endif // USE_TEMP_SENSORS
 
   #ifdef USE_WATERING_MODULE
+
+  if(!strcmp_P(str,(const char*)F("wtr_skip")))
+  {
+    // попросили пропустить полив на сегодня
+    ModuleInterop.QueryCommand(ctSET,F("WATER|SKIP"),false);
+    return;
+  }
+    
   if(!strcmp_P(str,(const char*)F("wtr_on")))
   {
     // попросили включить полив
