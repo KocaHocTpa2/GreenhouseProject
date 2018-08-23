@@ -206,7 +206,7 @@ void TFTWateringScreen::setup(TFTMenu* menuManager)
 
     // добавляем кнопку "Пропустить полив за сегодня"
     int skipButtonTop = menuManager->getDC()->getDisplayYSize() - TFT_IDLE_SCREEN_BUTTON_HEIGHT; // координата Y для кнопки "Назад"
-    skipButton = screenButtons->addButton(200, skipButtonTop, CHANNELS_BUTTON_WIDTH*2, ALL_CHANNELS_BUTTON_HEIGHT, "ПРОПУСТИТЬ СЕГОДНЯ");
+    skipButton = screenButtons->addButton(200, skipButtonTop, CHANNELS_BUTTON_WIDTH*2, ALL_CHANNELS_BUTTON_HEIGHT, SKIP_WATERING_LABEL);
     
   
     #endif // WATER_RELAYS_COUNT > 0

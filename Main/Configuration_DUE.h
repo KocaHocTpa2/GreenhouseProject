@@ -969,6 +969,7 @@
 #define CLOSE_ALL_LABEL "ЗАКРЫТЬ ВСЕ"
 #define TURN_ON_ALL_WATER_LABEL "ВКЛ ПОЛИВ"
 #define TURN_OFF_ALL_WATER_LABEL "ВЫКЛ ПОЛИВ"
+#define SKIP_WATERING_LABEL "ПРОПУСТИТЬ СЕГОДНЯ"
 #define TURN_ON_ALL_LIGHT_LABEL "СВЕТ ВКЛ"
 #define TURN_OFF_ALL_LIGHT_LABEL "СВЕТ ВЫКЛ"
 #define TFT_TOPEN_CAPTION "Температура открытия:"
