@@ -813,65 +813,6 @@ void SceneMenuItem::draw(DrawContext* dc)
     // рисуем курсор в текущей позиции
     dc->drawHLine(left,cur_top + HINT_FONT_BOX_PADDING,strW);
   }
-  
-/*
-  // вычисляем, с каких позициях нам рисовать наши иконки
-  const int frame_width = FRAME_WIDTH - CONTENT_PADDING*2;
-  const int one_icon_box_width = frame_width/itemsCount;
-  const int one_icon_left_spacing = (one_icon_box_width-MENU_BITMAP_SIZE)/2;
-
-
- // рисуем три иконки невыбранных чекбоксов  - пока
- for(int i=0;i<itemsCount;i++)
- {
- 
-  const unsigned char* cur_icon = UNCHECK_ICON;
-    if(i == 0)
-    {
-      if(windowsFlags.isWindowsOpen)
-        cur_icon = RADIO_CHECK_ICON;
-      else
-        cur_icon = RADIO_UNCHECK_ICON;
-    }
-    else
-    if(i == 1)
-    {
-      if(!windowsFlags.isWindowsOpen)
-        cur_icon = RADIO_CHECK_ICON;
-      else
-        cur_icon = RADIO_UNCHECK_ICON;
-    }
-    else
-    if(i == 2)
-    {
-      if(windowsFlags.isWindowsAutoMode)
-         cur_icon = CHECK_ICON;
-    }
-  int left = i*CONTENT_PADDING + i*one_icon_box_width + one_icon_left_spacing;
-  dc->drawXBMP(left, cur_top, MENU_BITMAP_SIZE, MENU_BITMAP_SIZE, cur_icon);
-  yield();
-
-  // теперь рисуем текст иконки
-  u8g_uint_t strW = dc->getStrWidth(captions[i]);
-
-  // вычисляем позицию шрифта слева
-  left =  i*CONTENT_PADDING + i*one_icon_box_width + (one_icon_box_width - strW)/2;
-
-  // рисуем заголовок
-  cur_top += MENU_BITMAP_SIZE + HINT_FONT_HEIGHT;
-  dc->drawStr(left, cur_top, captions[i]);
-  yield();
-
-  if((flags & 2) && i == cursorPos)
-  {
-    // рисуем курсор в текущей позиции
-    cur_top += HINT_FONT_BOX_PADDING;
-    dc->drawHLine(left,cur_top,strW);
-  }
-  yield();
- } // for
- */
-
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 #endif // USE_SCENE_MODULE
