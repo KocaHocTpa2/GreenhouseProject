@@ -778,11 +778,17 @@ void SceneMenuItem::update(uint16_t dt, LCDMenu* menu)
       SceneSettings ss = Scenes->GetSceneSettings(currentScene);
       displayName = ss.sceneName;
     }
+    else
+      itemsCount = 0;
+    
   } 
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 void SceneMenuItem::draw(DrawContext* dc)
 {
+  if(!scenesCount) // нечего рисовать
+    return;
+    
   const int frame_width = FRAME_WIDTH - CONTENT_PADDING*2;
   int cur_top = 14 + MENU_BITMAP_SIZE;
   u8g_uint_t strW = dc->getStrWidth(displayName.c_str());
