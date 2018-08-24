@@ -8,6 +8,10 @@
 #include "Buzzer.h"
 #endif
 
+#ifdef USE_SCENE_MODULE
+#include "SceneModule.h"
+#endif
+
 #if defined(USE_TEMP_SENSORS) && defined(WINDOWS_CHANNELS_SCREEN_ENABLED)
 #include "TempSensors.h"
 #endif
@@ -33,6 +37,10 @@ void ButtonOnClick(const PushButton& Sender, void* UserData) // пришло с�
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 IdlePageMenuItem IdleScreen; // экран ожидания
+//--------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_SCENE_MODULE
+SceneMenuItem SceneManageScreen; // экран управления сценариями
+#endif
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_TEMP_SENSORS
 WindowMenuItem WindowManageScreen; // экран управления окнами
@@ -694,6 +702,179 @@ void WindowMenuItem::draw(DrawContext* dc)
 
 }
 #endif
+//--------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_SCENE_MODULE
+//--------------------------------------------------------------------------------------------------------------------------------------
+SceneMenuItem::SceneMenuItem() : AbstractLCDMenuItem(SCENE_ICON,LCD_SCENE_CAPTION)
+{
+  
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
+void SceneMenuItem::init(LCDMenu* parent)
+{
+  AbstractLCDMenuItem::init(parent);
+  
+  sceneFlags.inited = false;
+  currentScene = 0;
+  scenesCount = 0;
+  
+  itemsCount = 2;
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
+bool SceneMenuItem::OnEncoderPositionChanged(int dir, LCDMenu* menu)
+{
+  if(!(flags & 2)) // курсор не нарисован, значит, нам не надо обрабатывать смену настройки с помощью энкодера
+    return false;
+
+  if(!scenesCount) // нет сценариев
+    return false;
+
+
+    if(dir != 0)
+    {
+      if(cursorPos == 0) // листают сценарии
+      {
+        currentScene += dir;
+        if(currentScene < 0)
+          currentScene = scenesCount - 1;
+          
+        if(currentScene  >= scenesCount)
+          currentScene = 0;
+  
+        SceneSettings ss = Scenes->GetSceneSettings(currentScene);
+        displayName = ss.sceneName;
+      }
+      else
+      if(cursorPos == 1) // крутят на выделенной кнопке пуск или стоп
+      {        
+          if(Scenes->IsSceneActive(currentScene))
+          {
+            Scenes->StopScene(currentScene);
+          }
+          else
+          {
+            Scenes->ExecuteScene(currentScene);
+          }        
+      }
+      
+    }
+
+    menu->wantRedraw();
+
+    return true; // сами обработали смену позиции энкодера
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
+void SceneMenuItem::update(uint16_t dt, LCDMenu* menu)
+{
+  UNUSED(dt);
+
+  if(!sceneFlags.inited)
+  {
+    sceneFlags.inited = true;
+    scenesCount = Scenes->GetScenesCount();
+    currentScene = 0;
+    if(scenesCount > 0)
+    {
+      SceneSettings ss = Scenes->GetSceneSettings(currentScene);
+      displayName = ss.sceneName;
+    }
+  } 
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
+void SceneMenuItem::draw(DrawContext* dc)
+{
+  const int frame_width = FRAME_WIDTH - CONTENT_PADDING*2;
+  int cur_top = 14 + MENU_BITMAP_SIZE;
+  u8g_uint_t strW = dc->getStrWidth(displayName.c_str());
+  int left = (frame_width - strW)/2 + CONTENT_PADDING;
+
+  dc->drawStr(left, cur_top, displayName.c_str());
+  if((flags & 2) && 0 == cursorPos)
+  {
+    // рисуем курсор в текущей позиции
+    dc->drawHLine(left,cur_top + HINT_FONT_BOX_PADDING,strW);
+  }
+
+  // рисуем кнопку RUN или STOP
+
+  cur_top += 14;
+  String btn;
+  if(Scenes->IsSceneActive(currentScene))
+    btn = LCD_STOP_SCENE;
+  else
+    btn = LCD_RUN_SCENE;
+
+  strW = dc->getStrWidth(btn.c_str());
+  left = (frame_width - strW)/2 + CONTENT_PADDING;
+  dc->drawStr(left, cur_top, btn.c_str());
+
+  if((flags & 2) && 1 == cursorPos)
+  {
+    // рисуем курсор в текущей позиции
+    dc->drawHLine(left,cur_top + HINT_FONT_BOX_PADDING,strW);
+  }
+  
+/*
+  // вычисляем, с каких позициях нам рисовать наши иконки
+  const int frame_width = FRAME_WIDTH - CONTENT_PADDING*2;
+  const int one_icon_box_width = frame_width/itemsCount;
+  const int one_icon_left_spacing = (one_icon_box_width-MENU_BITMAP_SIZE)/2;
+
+
+ // рисуем три иконки невыбранных чекбоксов  - пока
+ for(int i=0;i<itemsCount;i++)
+ {
+ 
+  const unsigned char* cur_icon = UNCHECK_ICON;
+    if(i == 0)
+    {
+      if(windowsFlags.isWindowsOpen)
+        cur_icon = RADIO_CHECK_ICON;
+      else
+        cur_icon = RADIO_UNCHECK_ICON;
+    }
+    else
+    if(i == 1)
+    {
+      if(!windowsFlags.isWindowsOpen)
+        cur_icon = RADIO_CHECK_ICON;
+      else
+        cur_icon = RADIO_UNCHECK_ICON;
+    }
+    else
+    if(i == 2)
+    {
+      if(windowsFlags.isWindowsAutoMode)
+         cur_icon = CHECK_ICON;
+    }
+  int left = i*CONTENT_PADDING + i*one_icon_box_width + one_icon_left_spacing;
+  dc->drawXBMP(left, cur_top, MENU_BITMAP_SIZE, MENU_BITMAP_SIZE, cur_icon);
+  yield();
+
+  // теперь рисуем текст иконки
+  u8g_uint_t strW = dc->getStrWidth(captions[i]);
+
+  // вычисляем позицию шрифта слева
+  left =  i*CONTENT_PADDING + i*one_icon_box_width + (one_icon_box_width - strW)/2;
+
+  // рисуем заголовок
+  cur_top += MENU_BITMAP_SIZE + HINT_FONT_HEIGHT;
+  dc->drawStr(left, cur_top, captions[i]);
+  yield();
+
+  if((flags & 2) && i == cursorPos)
+  {
+    // рисуем курсор в текущей позиции
+    cur_top += HINT_FONT_BOX_PADDING;
+    dc->drawHLine(left,cur_top,strW);
+  }
+  yield();
+ } // for
+ */
+
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
+#endif // USE_SCENE_MODULE
 //--------------------------------------------------------------------------------------------------------------------------------------
 #if defined(USE_WATERING_MODULE) && defined(WATER_CHANNELS_SCREEN_ENABLED)
 //--------------------------------------------------------------------------------------------------------------------------------------
@@ -1569,6 +1750,10 @@ DrawContext(cs)
 #ifdef USE_LUMINOSITY_MODULE  
   // добавляем экран управления досветкой
   items.push_back(&LuminosityManageScreen);
+#endif
+
+#ifdef USE_SCENE_MODULE
+  items.push_back(&SceneManageScreen);
 #endif
   
   // добавляем экран управления настройками

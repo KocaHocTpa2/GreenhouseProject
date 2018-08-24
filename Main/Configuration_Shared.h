@@ -26,6 +26,7 @@
 #define LCD_ALLWATERING_CAPTION "Полив"
 #define LCD_LIGHT_CAPTION "Досветка"
 #define LCD_SETTINGS_CAPTION "Настройки"
+#define LCD_SCENE_CAPTION "Сценарии"
 
 #define LCD_OPEN_LABEL F("ОТКР")
 #define LCD_CLOSE_LABEL F("ЗАКР")
@@ -37,6 +38,8 @@
 #define LCD_TOPEN_CAPTION F("Тоткр")
 #define LCD_TCLOSE_CAPTION F("Тзакр")
 #define LCD_INTERVAL_CAPTION F("Моторы")
+#define LCD_RUN_SCENE F("ПУСК")
+#define LCD_STOP_SCENE F("СТОП")
 
 //--------------------------------------------------------------------------------------------------------------------------------
 // Stat SMS settings

@@ -234,6 +234,28 @@ const unsigned char LUMINOSITY_ICON[] U8G_PROGMEM = {
  };
 #endif
 
+#ifdef USE_SCENE_MODULE
+const unsigned char SCENE_ICON[] U8G_PROGMEM = {
+0x00,0x00,
+0x00,0x00,
+0x00,0x00,
+0x08,0x01,
+0x18,0x03,
+0x38,0x07,
+0x78,0x0F,
+0xF8,0x1F,
+0xF8,0x1F,
+0x78,0x0F,
+0x38,0x07,
+0x18,0x03,
+0x08,0x01,
+0x00,0x00,
+0x00,0x00,
+0x00,0x00,
+};
+
+#endif
+
 const unsigned char SETTINGS_ICON[] U8G_PROGMEM = {
 0x00,0x00,
 0x00,0x00,
@@ -368,6 +390,34 @@ class WindowMenuItem : public AbstractLCDMenuItem // класс меню упр�
       WindowMenuItemFlags windowsFlags;
    public:
     WindowMenuItem();
+    virtual void draw(DrawContext* dc);
+    virtual void init(LCDMenu* parent);
+    virtual bool OnEncoderPositionChanged(int dir, LCDMenu* menu);
+    virtual void update(uint16_t dt, LCDMenu* menu);
+
+  
+};
+#endif
+//--------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_SCENE_MODULE
+//--------------------------------------------------------------------------------------------------------------------------------------
+typedef struct
+{
+    bool inited : 1;
+    byte pad : 7;
+  
+} SceneMenuItemFlags;
+//--------------------------------------------------------------------------------------------------------------------------------------
+class SceneMenuItem : public AbstractLCDMenuItem // класс меню управления сценариями
+{
+  private:
+      SceneMenuItemFlags sceneFlags;
+      uint16_t scenesCount;
+      int16_t currentScene;
+      String displayName;
+      
+   public:
+    SceneMenuItem();
     virtual void draw(DrawContext* dc);
     virtual void init(LCDMenu* parent);
     virtual bool OnEncoderPositionChanged(int dir, LCDMenu* menu);
@@ -538,6 +588,10 @@ class LCDMenu : public DrawContext
 #if defined(USE_TEMP_SENSORS) && defined(WINDOWS_CHANNELS_SCREEN_ENABLED)
     friend class WindowsChannelsMenuItem;
 #endif  
+
+#ifdef USE_SCENE_MODULE
+    friend class SceneMenuItem;
+#endif 
 
    void wantRedraw(); // ставим флаг необходимости перерисовки 
    void resetTimer(); // сбрасываем таймер перехода в меню ожидания
