@@ -24,6 +24,13 @@
       10 - выключить досветку
       11 - включить пин
       12 - выключить пин
+      13 - перейти в автоматический режим работы
+      14 - включить все правила
+      15 - выключить все правила
+      16 - включить все тревожные правила
+      17 - выключить все тревожные правила
+      18 - выполнить сценарий
+      19 - остановить сценарий
  */
 //--------------------------------------------------------------------------------------------------------------------------------
 #define HTTP_COMMAND_OPEN_WINDOWS 1
@@ -43,6 +50,8 @@
 #define HTTP_COMMAND_RULES_OFF 15
 #define HTTP_COMMAND_ALARMS_ON 16
 #define HTTP_COMMAND_ALARMS_OFF 17
+#define HTTP_COMMAND_SCENE_RUN 18
+#define HTTP_COMMAND_SCENE_STOP 19
 //--------------------------------------------------------------------------------------------------------------------------------
 void HttpModule::Setup()
 {
@@ -969,6 +978,24 @@ void HttpModule::OnAnswerLineReceived(String& line, bool& enough)
             ModuleInterop.QueryCommand(ctSET, F("ALERT|RULE_ALERT|ALL|OFF"), false);
           }
           break;
+
+          case HTTP_COMMAND_SCENE_RUN:
+          {
+            // выполняем сценарий
+            String c = F("SCN|EXEC|");
+            c += localParams;
+            ModuleInterop.QueryCommand(ctSET, c, false);            
+          }
+          break;          
+
+          case HTTP_COMMAND_SCENE_STOP:
+          {
+            // останавливаем сценарий
+            String c = F("SCN|STOP|");
+            c += localParams;
+            ModuleInterop.QueryCommand(ctSET, c, false);            
+          }
+          break;          
 
         } // switch
       
