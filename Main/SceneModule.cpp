@@ -80,6 +80,9 @@ bool SceneModule::IsSceneExists(uint16_t sceneNumber)
 //--------------------------------------------------------------------------------------------------------------------------------------
 void SceneModule::ExecuteScene(uint16_t sceneNumber)
 {
+  if(IsSceneActive(sceneNumber))
+    return;
+    
   StopScene(sceneNumber);
   ExecuteSceneFile(sceneNumber,initFile);
   AddSceneToList(sceneNumber);
@@ -87,6 +90,9 @@ void SceneModule::ExecuteScene(uint16_t sceneNumber)
 //--------------------------------------------------------------------------------------------------------------------------------------
 void SceneModule::StopScene(uint16_t sceneNumber)
 {
+  if(!IsSceneActive(sceneNumber))
+    return;
+  
   RemoveSceneFromList(sceneNumber);
   ExecuteSceneFile(sceneNumber,stopFile);  
 }
