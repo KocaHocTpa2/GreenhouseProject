@@ -9,6 +9,10 @@
   <p id='message_dialog_message'></p>
 </div>
 
+<div id="data_requested_dialog" title="Обработка данных..." class='hdn'>
+  <p>Пожалуйста, подождите, пока данные обрабатываются...</p>
+</div>
+
 <div id="temp_settings_dialog" title="Уставки" class='hdn'>
   <form>
   T открытия фрамуг:<br/>
@@ -345,6 +349,26 @@
                   
                   <br/><br/>
                   </div>
+                  
+                  <div id='scenes_status' class='hdn'>
+                  
+                    <div class='ui-widget-header ui-corner-top padding_around8px'>Сценарии</div>
+                    <div class='ui-widget-content ui-corner-bottom padding_around8px'>
+                    
+                        <div class='button_menu_spacer'>
+                          <select id='scene_list' size=8>
+                          </select>
+                        </div>                   
+                        
+                      <div style='margin-top:10px;'>
+                          <button id='run_scene' onclick='runScene();'>Запустить выбранный сценарий</button>                        
+                          <button id='stop_scene' onclick='stopScene();'>Остановить выбранный сценарий</button>                        
+                      </div>                             
+                    
+                    </div>
+                  
+                  <br/><br/>
+                  </div>                  
                   
               </div>
 

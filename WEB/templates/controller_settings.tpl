@@ -437,6 +437,8 @@
                 <option value='4'>Высокий уровень на пинах</option>
                 <option value='5'>Низкий уровень на пинах</option>
                 <option value='6'>Выполнить составную команду</option>
+                <option value='7'>Запустить сценарий</option>
+                <option value='8'>Остановить сценарий</option>
               </select>
             </div>
             

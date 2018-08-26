@@ -62,7 +62,10 @@ uint8_t AlertRule::GetKnownModuleID(const char* moduleName)
   if(!strcmp_P(moduleName,(const char*) F("0")))
     return moduleZero;
 
-  return 0;
+  if(!strcmp_P(moduleName,(const char*) F("SCN")))
+    return moduleScene;
+
+return 0;
 
 }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -111,6 +114,10 @@ const char* AlertRule::GetKnownModuleName(uint8_t type)
     
     case modulePH:
       strcpy_P(SD_BUFFER, (const char*) F("PH"));
+    break;
+
+    case moduleScene:
+      strcpy_P(SD_BUFFER, (const char*) F("SCN"));
     break;
     
   }
@@ -174,6 +181,26 @@ const char* AlertRule::GetTargetCommand()
       
       return SD_BUFFER;
     }
+
+    case commandExecScene:
+    {
+      strcpy_P(SD_BUFFER,(const char*) F("EXEC"));
+      strcat_P(SD_BUFFER,(const char*)PARAM_DELIMITER);
+      String helper = String(Settings.TargetCommandParam);
+      strcat(SD_BUFFER,helper.c_str());
+      
+      return SD_BUFFER;
+    }
+
+    case commandStopScene:
+    {
+      strcpy_P(SD_BUFFER,(const char*) F("STOP"));
+      strcat_P(SD_BUFFER,(const char*)PARAM_DELIMITER);
+      String helper = String(Settings.TargetCommandParam);
+      strcat(SD_BUFFER,helper.c_str());
+      
+      return SD_BUFFER;
+    }            
 
     case commandSetOnePinHigh:
     {
@@ -979,6 +1006,16 @@ bool AlertRule::Construct(AbstractModule* lm, const Command& command)
             Settings.TargetCommandType = commandExecCompositeCommand;
             Settings.TargetCommandParam = atoi(command.GetArg(argsCnt-1)); // последним параметром у команды идёт индекс списка
         } // CC
+        else
+        if(!strcmp_P(tcModuleName,(const char*)F("SCN"))) // чего-то делаем со сценариями
+        {
+            Settings.TargetCommandType = commandExecScene;
+            
+            if(!strcmp_P(command.GetArg(argsCnt-2),(const char*) F("STOP")))
+              Settings.TargetCommandType = commandStopScene;
+              
+            Settings.TargetCommandParam = atoi(command.GetArg(argsCnt-1)); // последним параметром у команды идёт номер сценария
+        } // SCN
         else
         if(!strcmp_P(tcModuleName,(const char*)F("PIN"))) // чего-то делаем с пинами
         {

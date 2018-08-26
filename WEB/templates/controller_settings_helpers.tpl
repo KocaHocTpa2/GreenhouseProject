@@ -2205,27 +2205,7 @@ controller.OnGetModulesList = function(obj)
     
     if(hasWIFIModule) // если в прошивке есть модуль wi-fi
     {
-    /*
-        controller.queryServerScript("/x_get_wifi_settings.php",{}, function(obj,result){
-           
-          $('#wifi_menu').toggle(true);
-          
-          var answer = result.wifi;
-          
-            var checked = false;
-            if(answer.connect_to_router && answer.connect_to_router == 1)
-              checked = true;
-              
-            $('#router_id').val(answer.router_id);
-            $('#router_pass').val(answer.router_pass);
-            $('#station_id').val(answer.station_id);
-            $('#station_pass').val(answer.station_pass);
-            if(checked)
-              $('#connect_to_router').attr('checked', 'checked');
-        
-        });
-        
-        */
+    
           controller.queryCommand(true,'WIFI|T_SETT',function(obj,answer){
                      
           if(answer.IsOK)
@@ -3090,6 +3070,14 @@ $(document).ready(function(){
           ed.attr('placeholder','индекс составной команды');
           $('#rule_additional_param').toggle(true);
         break;
+
+        case 7:
+        case 8:
+          $addParamCaption.html("Номер сценария:");
+          ed.attr('placeholder','номер сценария');
+          $('#rule_additional_param').toggle(true);
+        break;
+
       } // switch
   });
   

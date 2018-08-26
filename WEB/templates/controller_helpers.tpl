@@ -12,6 +12,23 @@ var view = new View(controller);
 //-----------------------------------------------------------------------------------------------------
 var tempAndMotorDataRequested = false; // флаг, что мы запросили настройки температур и моторов
 //-----------------------------------------------------------------------------------------------------
+function showWaitDialog()
+{
+  $("#data_requested_dialog" ).dialog({
+                dialogClass: "no-close",
+                modal: true,
+                closeOnEscape: false,
+                draggable: false,
+                resizable: false,
+                buttons: []
+              });
+}
+//-----------------------------------------------------------------------------------------------------
+function closeWaitDialog()
+{
+  $("#data_requested_dialog" ).dialog('close');
+}
+//-----------------------------------------------------------------------------------------------------
 // обрабатываем запрос на редактирование имени
 view.OnEditSensorName = function(mnemonic, sensor, row)
 {
@@ -623,7 +640,49 @@ controller.OnGetModulesList = function(obj)
            
           pinsNames = result.pins;
                      
-        });  
+        }); 
+        
+    if(controller.Modules.includes('SCN'))
+    {
+      $('#scenes_status').show();
+      controller.queryCommand(true,'SCN',function(obj,answer){
+          if(answer.IsOK)
+          {
+            var scCount = parseInt(answer.Params[1]);
+            for(var i=0;i<scCount;i++)
+            {
+                controller.queryCommand(true,'SCN|SETT|' + i,function(o,a){
+                      if(a.IsOK)
+                      {
+                        var encodedName = a.Params[4];
+                        
+                        var decodedName = "";
+                        
+                        if(encodedName.length > 1)
+                        {
+                          var uintArray = new Array();
+                          
+                          for(var i=0;i<encodedName.length;i+=2)
+                          {
+                            uintArray.push(parseInt(encodedName.substr(i,2),16));
+                          }
+                          
+                          var arrBuff = new ArrayBuffer(uintArray.length);
+                          var bw = new Uint8Array(arrBuff);
+                          for(var i=0;i<uintArray.length;i++)
+                            bw[i] = uintArray[i];
+                            
+                          decodedName = new TextDecoder().decode(arrBuff);
+                        }
+                        
+                        $('<option/>').html(decodedName).appendTo('#scene_list');                       
+                        
+                      }
+                });
+            } // for
+          }
+      });      
+    }         
 };
 //-----------------------------------------------------------------------------------------------------
 // событие "Получен и разобран слепок состояния контроллера", приходит после вызова controller.queryState()
@@ -702,11 +761,52 @@ controller.OnUpdate = function(obj, answer)
       $('#FLOW_MENU').show(controller.Flow1Present || controller.Flow2Present);
     }
     else
-      $('#FLOW_MENU').hide();  
+      $('#FLOW_MENU').hide(); 
+      
 
 
   } // is ok
 };
+//-----------------------------------------------------------------------------------------------------
+function runScene()
+{
+  var selIdx = $('#scene_list').get(0).selectedIndex;
+   if(selIdx > -1)
+   {
+      showWaitDialog();
+      
+      controller.queryCommand(false,'SCN|EXEC|' + selIdx,function(obj,answer){
+                                
+                                  closeWaitDialog();
+                                  if(answer.IsOK)
+                                    showMessage("Выбранный сценарий запущен!");
+                                  else
+                                    showMessage("Ошибка выполнения команды :(");                           
+                                  
+                                  
+                                });      
+   }
+}
+//-----------------------------------------------------------------------------------------------------
+function stopScene()
+{
+  var selIdx = $('#scene_list').get(0).selectedIndex;
+   if(selIdx > -1)
+   {
+      showWaitDialog();
+      
+      controller.queryCommand(false,'SCN|STOP|' + selIdx,function(obj,answer){
+                                
+                                  closeWaitDialog();
+                                  if(answer.IsOK)
+                                    showMessage("Выбранный сценарий остановлен!");
+                                  else
+                                    showMessage("Ошибка выполнения команды :(");                           
+                                  
+                                  
+                                });      
+   }
+}
 //-----------------------------------------------------------------------------------------------------
 function updatePHState()
 {
@@ -821,6 +921,17 @@ window.setInterval(updateControllerData,5000); // повторяем опрос 
     
     $('#reset_flow_btn').button();
     
+    $('#run_scene').button({
+      icons: {
+        primary: "ui-icon-play"
+      }
+    });    
+    
+    $('#stop_scene').button({
+      icons: {
+        primary: "ui-icon-close"
+      }
+    });      
 
 });
 //-----------------------------------------------------------------------------------------------------
