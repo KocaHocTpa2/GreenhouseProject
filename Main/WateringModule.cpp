@@ -174,7 +174,7 @@ void WateringChannel::SaveState(unsigned long wateringTimer)
     DoSaveState(offset, wateringTimer);
 }
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void WateringChannel::On()
+void WateringChannel::On(WateringModule* m)
 {
   flags.lastIsON = flags.isON;
   flags.isON = true;
@@ -184,12 +184,28 @@ void WateringChannel::On()
     WTR_LOG(F("[WTR] - state for channel "));
     WTR_LOG(String(flags.index));
     WTR_LOG(F(" changed, relay ON...\r\n"));
+
+    // записываем в файл действий, что состояние канала полива изменилось
+    #if defined(USE_LOG_MODULE) && defined(LOG_ACTIONS_ENABLED)
+    
+      String message;
+      message = '#';
+      message += flags.index;
+      message += ' ';
+      if(flags.isON)
+        message += STATE_ON;
+      else
+        message += STATE_OFF;
+
+      MainController->Log(m,message);
+      
+    #endif
         
     SignalToHardware(); // записываем новое состояние в пин
   }
 }
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void WateringChannel::Off()
+void WateringChannel::Off(WateringModule* m)
 {
   flags.lastIsON = flags.isON;
   flags.isON = false;
@@ -199,6 +215,22 @@ void WateringChannel::Off()
     WTR_LOG(F("[WTR] - state for channel "));
     WTR_LOG(String(flags.index));
     WTR_LOG(F(" changed, relay OFF...\r\n"));
+
+    // записываем в файл действий, что состояние канала полива изменилось
+    #if defined(USE_LOG_MODULE) && defined(LOG_ACTIONS_ENABLED)
+    
+      String message;
+      message = '#';
+      message += flags.index;
+      message += ' ';
+      if(flags.isON)
+        message += STATE_ON;
+      else
+        message += STATE_OFF;
+
+      MainController->Log(m,message);
+      
+    #endif
         
     SignalToHardware(); // записываем новое состояние в пин
   }
@@ -214,7 +246,7 @@ bool WateringChannel::IsActive()
   return flags.isON;
 }
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void WateringChannel::Update(uint16_t _dt,WateringWorkMode currentWorkMode, const RTCTime& currentTime, int8_t savedDayOfWeek)
+void WateringChannel::Update(WateringModule* m, uint16_t _dt,WateringWorkMode currentWorkMode, const RTCTime& currentTime, int8_t savedDayOfWeek)
 {
   #ifdef USE_DS3231_REALTIME_CLOCK
 
@@ -276,7 +308,7 @@ void WateringChannel::Update(uint16_t _dt,WateringWorkMode currentWorkMode, cons
   
     if(!canWork)
      { 
-       Off(); // выключаем реле
+       Off(m); // выключаем реле
      }
      else
      {
@@ -314,11 +346,11 @@ void WateringChannel::Update(uint16_t _dt,WateringWorkMode currentWorkMode, cons
          SaveState(flags.wateringTimer);
         } // if(IsActive())
 
-        Off(); // выключаем реле
+        Off(m); // выключаем реле
       
       }
       else
-        On(); // ещё можем работать, продолжаем поливать
+        On(m); // ещё можем работать, продолжаем поливать
         
      } // else can work
      
@@ -741,7 +773,7 @@ void WateringModule::TurnChannelsOff() // выключает все каналы
   #if WATER_RELAYS_COUNT > 0
     for(byte i=0;i<WATER_RELAYS_COUNT;i++)
     {
-      wateringChannels[i].Off();
+      wateringChannels[i].Off(this);
     }
   #endif // WATER_RELAYS_COUNT > 0
 }
@@ -753,7 +785,7 @@ void WateringModule::TurnChannelsOn() // включает все каналы
   #if WATER_RELAYS_COUNT > 0
     for(byte i=0;i<WATER_RELAYS_COUNT;i++)
     {
-      wateringChannels[i].On();
+      wateringChannels[i].On(this);
     }
   #endif // WATER_RELAYS_COUNT > 0  
 }
@@ -767,7 +799,7 @@ void WateringModule::TurnChannelOff(byte channelIndex) // выключает к�
   #if WATER_RELAYS_COUNT > 0
     if(channelIndex < WATER_RELAYS_COUNT)
     {
-      wateringChannels[channelIndex].Off();
+      wateringChannels[channelIndex].Off(this);
     }
   #endif // WATER_RELAYS_COUNT > 0  
 }
@@ -781,7 +813,7 @@ void WateringModule::TurnChannelOn(byte channelIndex) // включает кан
   #if WATER_RELAYS_COUNT > 0
     if(channelIndex < WATER_RELAYS_COUNT)
     {
-      wateringChannels[channelIndex].On();
+      wateringChannels[channelIndex].On(this);
     }
   #endif // WATER_RELAYS_COUNT > 0
 }
@@ -869,7 +901,7 @@ void WateringModule::Update(uint16_t dt)
       // теперь обновляем все каналы
       for(uint8_t i=0;i<WATER_RELAYS_COUNT;i++)
       {
-          wateringChannels[i].Update(dt,(WateringWorkMode) flags.workMode,t,lastDOW);
+          wateringChannels[i].Update(this,dt,(WateringWorkMode) flags.workMode,t,lastDOW);
       } // for
     }
 

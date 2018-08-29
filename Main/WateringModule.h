@@ -36,6 +36,8 @@ typedef struct
   
 } WateringChannelFlags; // структура флагов канала полива
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+class WateringModule;
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #if WATER_RELAYS_COUNT > 0
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 class WateringChannel
@@ -53,8 +55,8 @@ class WateringChannel
     WateringChannel();
 
     void Setup(byte index); // настраиваемся перед работой
-    void On(); // включаем канал
-    void Off(); // выключаем канал
+    void On(WateringModule* m); // включаем канал
+    void Off(WateringModule* m); // выключаем канал
 
     void LoadState(); // загружаем состояние из EEPROM
     void SaveState(unsigned long wateringTimer = 0); // сохраняем настройки в EEPROM
@@ -62,7 +64,7 @@ class WateringChannel
     bool IsChanged(); // изменилось ли состояние канала после вызова On() или Off() ?
     bool IsActive(); // активен ли полив на канале ?
 
-    void Update(uint16_t dt,WateringWorkMode currentWorkMode, const RTCTime& currentTime, int8_t savedDayOfWeek); // обновляет состояние канала
+    void Update(WateringModule* m, uint16_t dt,WateringWorkMode currentWorkMode, const RTCTime& currentTime, int8_t savedDayOfWeek); // обновляет состояние канала
 };
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #endif // WATER_RELAYS_COUNT > 0
