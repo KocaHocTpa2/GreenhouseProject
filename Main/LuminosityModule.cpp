@@ -473,6 +473,34 @@ bool  LuminosityModule::ExecCommand(const Command& command, bool wantAnswer)
               
            } // if (argsCnt > 1)
          } // WORK_MODE
+         else
+         if(s == F("DATA")) // установить значение на датчике, CTSET=LIGHT|DATA|idx|value
+         {
+            if (argsCnt > 2)
+            {
+                uint8_t sensorIndex = (uint8_t) atoi(command.GetArg(1));
+                long sensorValue =  (long) atol(command.GetArg(2));
+        
+                uint8_t _lightCnt = State.GetStateCount(StateLuminosity);
+                
+                if(sensorIndex >= _lightCnt)
+                {
+                  uint8_t toAdd = (sensorIndex - _lightCnt) + 1;
+        
+                    for(uint8_t qa = 0; qa < toAdd; qa++)
+                    {
+                      State.AddState(StateLuminosity,_lightCnt + qa);
+                    }
+                }              
+                     
+                State.UpdateState(StateLuminosity,sensorIndex,(void*)&sensorValue);
+        
+                PublishSingleton.Flags.Status = true;
+                PublishSingleton = s;
+                PublishSingleton << PARAM_DELIMITER << sensorIndex << PARAM_DELIMITER << REG_SUCC;              
+              
+            } // if (argsCnt > 2)
+         } // DATA
          
       } // if(argsCnt > 0)
   }

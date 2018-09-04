@@ -846,6 +846,41 @@ bool  TempSensors::ExecCommand(const Command& command, bool wantAnswer)
           PublishSingleton << PARAM_DELIMITER << REG_SUCC;
         }
       } // TEMP_SETTINGS
+      else
+      if(commandRequested == PROP_TEMP) // установить значение датчика, CTSET=STATE|TEMP|index|value
+      {
+        uint8_t sensorIndex = (uint8_t) atoi(command.GetArg(1));
+        int16_t sensorValue =  (int16_t) atoi(command.GetArg(2));
+
+        uint8_t _tempCnt = State.GetStateCount(StateTemperature);
+        
+        if(sensorIndex >= _tempCnt)
+        {
+          uint8_t toAdd = (sensorIndex - _tempCnt) + 1;
+
+            for(uint8_t qa = 0; qa < toAdd; qa++)
+            {
+              State.AddState(StateTemperature,_tempCnt + qa);
+            }
+        }
+
+          Temperature t;
+          t.Value = sensorValue/100;
+    
+          t.Fract = abs(sensorValue%100);
+    
+          // convert to Fahrenheit if needed
+          #ifdef MEASURE_TEMPERATURES_IN_FAHRENHEIT
+           t = Temperature::ConvertToFahrenheit(t);
+          #endif      
+             
+        State.UpdateState(StateTemperature,sensorIndex,(void*)&t);
+
+        PublishSingleton.Flags.Status = true;
+        PublishSingleton = commandRequested;
+        PublishSingleton << PARAM_DELIMITER << sensorIndex << PARAM_DELIMITER << REG_SUCC;
+        
+      } // PROP_TEMP
       
     } // if(argsCnt > 2)
     else if(argsCnt > 1)
