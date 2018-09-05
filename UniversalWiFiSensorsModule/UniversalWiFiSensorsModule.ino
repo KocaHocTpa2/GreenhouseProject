@@ -5,40 +5,11 @@
 #include "DS18B20Query.h"
 #include "BH1750.h"
 #include "HTU21D.h"
+#include "Settings.h"
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Прошивка универсального модуля с датчиками, отсылающего данные на контроллер через ESP.
 // Прошивка предназначена для закачки в ESP8266, например, в плату NodeMCU
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// настройки прошивки
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#define _DEBUG // закомментировать для выключения отладочного режима (плюётся в Serial отладочной информацией на скорости 57600)
-#define UPDATE_INTERVAL 10000 // интервал обновления показаний с датчиков, мс
-#define CONTROLLER_SSID "TEPLICA" // имя сети Wi-Fi контроллера
-#define CONTROLLER_PASSWORD "12345678" // пароль к сети Wi-Fi контроллера
-#define SEND_PACKET_DELAY 1000 // задержка после записи данных одного датчика на контроллер, для того, чтобы быть уверенными, что контроллер обработал данные (мс)
-#define CLIENT_FLUSH_DELAY 100 // задержка после закрытия клиента, который отсылал очередной пакет данных, мс
-#define CONNECT_TIMEOUT 30000 // таймаут коннекта, мс
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// режим глубокого сна (максимальный промежуток между пробуждениями - 35 минут)
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// для поддержки режима глубокого сна надо соединить GPIO16 (на NodeMCU - пин D0) с выводом RST на плате.
-// при включенной подержке глубокого сна ESP после отправки данных засыпает, потом - рестартует сначала
-#define USE_DEEP_SLEEP // закомментировать, если не надо использовать режим глубокого сна
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// настройки датчиков
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// датчики прописываются через запятую, одна запись имеет вид
-// { тип, индексВконтроллере, параметр1, параметр2, параметр3 }, где
-// тип - тип датчика, индексВконтроллере - индекс датчика в контроллере, параметрN - необязательные параметры, зависящие от типа датчика.
-// Для датчика DS18B20:
-// { sensor_DS18B20, НОМЕР_ПИНА, РАЗРЕШЕНИЕ }, где РАЗРЕШЕНИЕ - одно из значений
-// temp9bit, temp10bit, temp11bit, temp12bit
-// ПРИМЕРЫ:
-// { sensor_DS18B20, 3, D5, temp12bit } // датчик DS18B20 с индексом в контроллере 3, на пине D5, с разрешением 12 бит
-// {sensor_BH1750, 3, BH1750Address1 } // датчик освещённости BH1750 с адресом 1 на шине I2C, индекс в контроллере - 3
-// {sensor_BH1750, 5, BH1750Address2 } // датчик освещённости BH1750 с адресом 2 на шине I2C, индекс в контроллере - 5
-// {sensor_Si7021, 4 } // датчик Si7021 на шине I2C, индекс в контроллере - 4
-#define SENSORS { sensor_DS18B20, 3, D5, temp12bit },  { sensor_DS18B20, 4, D6, temp12bit }, {sensor_BH1750, 5, BH1750Address2 }, {sensor_Si7021, 4 }
+// ВСЕ НАСТРОЙКИ - ВВЕРХУ ФАЙЛА CONFIG.H !!!
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // дальше лазить - неосмотрительно :)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -100,9 +71,25 @@
 uint32_t lastMillis = 0;
 uint32_t updateInterval = UPDATE_INTERVAL;
 bool isWireInited = false;
+bool isDeepSleepAllowed = 
+#ifdef USE_DEEP_SLEEP
+true;
+#else
+false;
+#endif
 SensorSettings sensors[] = {
   SENSORS
 };
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void myDelay(uint32_t msec)
+{
+  while(msec > 0)
+  {
+    --msec;
+    CommandHandler.handleCommands();
+    delay(1);
+  }
+}
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void wifiOff()
 {
@@ -233,7 +220,7 @@ void doSendData()
         #ifdef _DEBUG
           Serial.println(F("Connection failed!"));
         #endif
-        delay(50);
+        myDelay(50);
         continue;
       }  
         
@@ -245,7 +232,7 @@ void doSendData()
       client.println(strToSend);
       client.flush();
     
-      delay(SEND_PACKET_DELAY + random(100));
+      myDelay(SEND_PACKET_DELAY + random(100));
     
       while(client.connected() && client.available())
       {
@@ -256,7 +243,7 @@ void doSendData()
       }
     
       client.stop();
-      delay(CLIENT_FLUSH_DELAY + random(100));
+      myDelay(CLIENT_FLUSH_DELAY + random(100));
 
   } // for
 
@@ -269,23 +256,31 @@ void doSendData()
 void sendSensorsData()
 {
   #ifdef _DEBUG
-    Serial.println(F("Attempt to send sensors data..."));
+    Serial.println(F("Attempting to send sensors data..."));
   #endif
 
   WiFi.mode(WIFI_STA);
+
+  String ssid = Settings.getRouterID();
+  String pass = Settings.getRouterPassword();
     
   #ifdef _DEBUG
-    Serial.print(F("Connecting to "));
-    Serial.print(CONTROLLER_SSID);
+    Serial.print(F("Connecting to \""));
+    Serial.print(ssid);
+    Serial.print(F("\" with password \""));
+    Serial.print(pass);
+    Serial.print(F("\" "));
   #endif
   
-  WiFi.begin(CONTROLLER_SSID, CONTROLLER_PASSWORD);
+  WiFi.begin(ssid.c_str(), pass.c_str());
 
   static uint32_t startConnectTimer = 0;
   startConnectTimer = millis();
 
   while(1)
   {
+    CommandHandler.handleCommands();
+    
     if(millis() - startConnectTimer > CONNECT_TIMEOUT)
     {
         #ifdef _DEBUG
@@ -342,7 +337,7 @@ void sendSensorsData()
     #ifdef _DEBUG
       Serial.print('.');
     #endif    
-    delay(500);
+    myDelay(500);
   } // while
 
   
@@ -493,14 +488,27 @@ void setup()
     Serial.println(F("Starting..."));
     Serial.setDebugOutput(true);
   #endif
-
-  randomSeed(analogRead(0));
-  updateInterval = UPDATE_INTERVAL + random(100);
   
   WiFi.setAutoConnect(false);
   WiFi.setAutoReconnect(false);
 
+  Settings.begin();
+
+  randomSeed(analogRead(0));
+  updateInterval = Settings.getInterval() + random(100);
+
   initSensors();
+
+  #if defined(DEEP_SLEEP_OFF_PIN) && defined(USE_DEEP_SLEEP)
+    pinMode(DEEP_SLEEP_OFF_PIN, INPUT);
+    if(digitalRead(DEEP_SLEEP_OFF_PIN) == DEEP_SLEEP_SIGNAL_LEVEL)
+    {
+      isDeepSleepAllowed = false;
+     #ifdef _DEBUG
+        Serial.println(F("DEEP SLEEP OFF!"));
+      #endif      
+    }
+  #endif
 
   #ifdef _DEBUG
     Serial.println(F("Started."));
@@ -512,6 +520,32 @@ void setup()
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void loop() 
 {
+  CommandHandler.handleCommands();
+
+  if(isDeepSleepAllowed)
+  {
+    sendSensorsData();
+    
+    clearSensorsData();
+    uint32_t dsPeriod = Settings.getInterval() + random(100);
+    dsPeriod *= 1000; // в микросекунды
+    ESP.deepSleep(dsPeriod);
+        
+  }
+  else
+  {
+       static bool bFirst = true;
+       if(bFirst || (millis() - lastMillis > updateInterval))
+       {
+          bFirst = false;
+          sendSensorsData();
+          lastMillis = millis();
+          updateInterval = Settings.getInterval() + random(100);
+       } // if
+       
+  } // no deep sleep
+
+/*  
 #ifndef USE_DEEP_SLEEP
 
   static bool bFirst = true;
@@ -524,18 +558,12 @@ void loop()
 
 #ifndef USE_DEEP_SLEEP    
     lastMillis = millis();
-    updateInterval = UPDATE_INTERVAL + random(100);
+    updateInterval = Settings.getInterval() + random(100);
   }
 #endif
+*/
 
-#ifdef USE_DEEP_SLEEP
-  clearSensorsData();
-  uint32_t dsPeriod = UPDATE_INTERVAL + random(100);
-  dsPeriod *= 1000; // в микросекунды
-  ESP.deepSleep(dsPeriod);
-#endif
-
-  delay(1);
+  myDelay(1);
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
