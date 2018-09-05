@@ -92,6 +92,7 @@ bool DS18B20Support::readTemperature(DS18B20Temperature* result,DSSensorType typ
 
   if(result->Whole < -55 || result->Whole > 125)
   {
+    result->Negative = false;
     result->Whole = NO_TEMPERATURE_DATA;
     result->Fract = 0;
   }
