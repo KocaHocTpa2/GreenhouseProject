@@ -884,9 +884,12 @@ void InitSensors()
     temp = (temp ^ 0xFFFF) + 1;
 
   int tc_100 = (6 * temp) + temp/4;
+
+  if(isNegative)
+    tc_100 = -tc_100;
    
   s->data[0] = tc_100/100;
-  s->data[1] = tc_100 % 100;
+  s->data[1] = abs(tc_100 % 100);
 
   #ifdef _DEBUG
     Serial.print(F("DS18B20: "));
@@ -1009,7 +1012,7 @@ void ReadSHT10(const SensorSettings& sett, void* sensorDefinedData, struct senso
     // has temperature
     int conv = temp * 100;
     ha.Temperature = conv/100;
-    ha.TemperatureDecimal = conv%100;
+    ha.TemperatureDecimal = abs(conv%100);
   }
 
   if(!(hum < 0))
