@@ -178,7 +178,70 @@ bool  HumidityModule::ExecCommand(const Command& command,bool wantAnswer)
 
   if(command.GetType() == ctSET) // установка свойств
   {
+    uint8_t argsCnt = command.GetArgsCount();
+    if(argsCnt > 0)
+    {
+    String param = command.GetArg(0);
     
+         if(param == F("DATA")) // установить значение на датчике, CTSET=HUMIDITY|DATA|idx|temperature|humidity
+         {
+            if (argsCnt > 3)
+            {
+                uint8_t sensorIndex = (uint8_t) atoi(command.GetArg(1));
+                int16_t temperature =  (long) atoi(command.GetArg(2));
+                int16_t humidity =  (long) atoi(command.GetArg(3));
+        
+                uint8_t _tempCnt = State.GetStateCount(StateTemperature);
+                
+                if(sensorIndex >= _tempCnt)
+                {
+                  uint8_t toAdd = (sensorIndex - _tempCnt) + 1;
+        
+                    for(uint8_t qa = 0; qa < toAdd; qa++)
+                    {
+                      State.AddState(StateTemperature,_tempCnt + qa);
+                    }
+                } 
+
+                uint8_t _humCnt = State.GetStateCount(StateHumidity);
+                
+                if(sensorIndex >= _humCnt)
+                {
+                  uint8_t toAdd = (sensorIndex - _humCnt) + 1;
+        
+                    for(uint8_t qa = 0; qa < toAdd; qa++)
+                    {
+                      State.AddState(StateHumidity,_humCnt + qa);
+                    }
+                }                                 
+                     
+                
+                    Temperature t;
+                    t.Value = temperature/100;
+              
+                    t.Fract = abs(temperature%100);
+              
+                    // convert to Fahrenheit if needed
+                    #ifdef MEASURE_TEMPERATURES_IN_FAHRENHEIT
+                     t = Temperature::ConvertToFahrenheit(t);
+                    #endif      
+                       
+                  State.UpdateState(StateTemperature,sensorIndex,(void*)&t);
+
+                  Humidity h;
+                  h.Value = humidity/100;
+                  h.Fract = abs(humidity%100);
+                  
+                  State.UpdateState(StateHumidity,sensorIndex,(void*)&h);
+
+        
+                PublishSingleton.Flags.Status = true;
+                PublishSingleton = param;
+                PublishSingleton << PARAM_DELIMITER << sensorIndex << PARAM_DELIMITER << REG_SUCC;              
+              
+            } // if (argsCnt > 3)
+         } // DATA
+    } // argsCount > 0
   } // ctSET
   else
   if(command.GetType() == ctGET) // запрос свойств

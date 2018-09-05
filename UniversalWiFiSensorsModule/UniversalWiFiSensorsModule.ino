@@ -4,6 +4,7 @@
 #include "CONFIG.h"
 #include "DS18B20Query.h"
 #include "BH1750.h"
+#include "HTU21D.h"
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Прошивка универсального модуля с датчиками, отсылающего данные на контроллер через ESP.
 // Прошивка предназначена для закачки в ESP8266, например, в плату NodeMCU
@@ -22,7 +23,7 @@
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // для поддержки режима глубокого сна надо соединить GPIO16 (на NodeMCU - пин D0) с выводом RST на плате.
 // при включенной подержке глубокого сна ESP после отправки данных засыпает, потом - рестартует сначала
-//#define USE_DEEP_SLEEP // закомментировать, если не надо использовать режим глубокого сна
+#define USE_DEEP_SLEEP // закомментировать, если не надо использовать режим глубокого сна
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // настройки датчиков
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -36,8 +37,8 @@
 // { sensor_DS18B20, 3, D5, temp12bit } // датчик DS18B20 с индексом в контроллере 3, на пине D5, с разрешением 12 бит
 // {sensor_BH1750, 3, BH1750Address1 } // датчик освещённости BH1750 с адресом 1 на шине I2C, индекс в контроллере - 3
 // {sensor_BH1750, 5, BH1750Address2 } // датчик освещённости BH1750 с адресом 2 на шине I2C, индекс в контроллере - 5
-
-#define SENSORS { sensor_DS18B20, 3, D5, temp12bit },  { sensor_DS18B20, 4, D6, temp12bit }, {sensor_BH1750, 5, BH1750Address2 }
+// {sensor_Si7021, 4 } // датчик Si7021 на шине I2C, индекс в контроллере - 4
+#define SENSORS { sensor_DS18B20, 3, D5, temp12bit },  { sensor_DS18B20, 4, D6, temp12bit }, {sensor_BH1750, 5, BH1750Address2 }, {sensor_Si7021, 4 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 // дальше лазить - неосмотрительно :)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -116,6 +117,45 @@ String readFromSensor(SensorSettings* sett)
   {
       case sensor_NoSensor:
       break;
+
+     case sensor_Si7021:
+     {
+        HTU21D* htu = (HTU21D*) sett->data;
+        float temperature = htu->readTemperature();
+        float humidity = htu->readHumidity();
+        result = F("CTSET=HUMIDITY|DATA|");
+        result += sett->targetIndex;
+        result += '|';
+
+        byte humError = (byte) humidity;
+        byte tempError = (byte) temperature;
+
+        if(tempError == HTU21D_ERROR)
+        {
+         result += NO_TEMPERATURE_DATA;
+         result += "00";          
+        }
+        else
+        {
+            int iTmp = temperature*100;
+            result += iTmp;
+        }
+
+        result += '|';
+
+        if(humError == HTU21D_ERROR)
+        {
+         result += NO_TEMPERATURE_DATA;
+         result += "00";          
+        }
+        else
+        {
+            int iTmp = humidity*100;
+            result += iTmp;
+        }
+        
+     }
+     return result;
 
      case sensor_BH1750:
      {
@@ -322,6 +362,13 @@ void clearSensorsData()
       case sensor_NoSensor:
       break;
 
+      case sensor_Si7021:
+      {
+        HTU21D* htu = (HTU21D*) sensors[i].data;
+        delete htu;
+      }
+      break;
+
       case sensor_BH1750:
       {
         BH1750Support* bh = (BH1750Support*) sensors[i].data;
@@ -361,6 +408,29 @@ void initSensors()
     switch(sensors[i].type)
     {
       case sensor_NoSensor:
+      break;
+
+      case sensor_Si7021:
+      {
+        #ifdef _DEBUG
+          Serial.println(F("Si7021 found, init..."));
+        #endif        
+        if(!isWireInited)
+        {
+          isWireInited = true;
+          Wire.begin();
+        }
+
+        HTU21D* htu = new HTU21D();
+        sensors[i].data = htu;
+        htu->begin();
+
+        #ifdef _DEBUG
+          Serial.print(F("Si7021 inited"));
+          Serial.print(F(" with data="));
+          Serial.println((int)sensors[i].data);
+        #endif                
+      }
       break;
 
       case sensor_BH1750:
@@ -443,8 +513,11 @@ void setup()
 void loop() 
 {
 #ifndef USE_DEEP_SLEEP
-  if(millis() - lastMillis > updateInterval)
+
+  static bool bFirst = true;
+  if(bFirst || (millis() - lastMillis > updateInterval))
   {
+    bFirst = false;
 #endif    
 
     sendSensorsData();
@@ -457,7 +530,7 @@ void loop()
 
 #ifdef USE_DEEP_SLEEP
   clearSensorsData();
-  uint32_t dsPeriod = UPDATE_INTERVAL;
+  uint32_t dsPeriod = UPDATE_INTERVAL + random(100);
   dsPeriod *= 1000; // в микросекунды
   ESP.deepSleep(dsPeriod);
 #endif
