@@ -1494,7 +1494,8 @@ void initLoRa()
   if(loRaInited)
   {
     LoRa.setTxPower(LORA_TX_POWER);
-    LoRa.receive(); // начинаем слушать
+    //LoRa.receive(); // начинаем слушать
+    LoRa.sleep(); // засыпаем
   } // nRFInited
   
 }
@@ -1552,10 +1553,12 @@ void sendDataViaLoRa()
       #endif
     }
     
-  LoRa.receive();
+  //LoRa.receive();
 
   // рандомная задержка
   delay(random(50));
+
+  LoRa.sleep(); // засыпаем
 
 }
 //----------------------------------------------------------------------------------------------------------------
