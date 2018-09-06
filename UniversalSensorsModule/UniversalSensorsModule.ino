@@ -1871,7 +1871,10 @@ void loop()
                 if(!connectedViaOneWire)
                 {
                    LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);  
-                   sensorsUpdateTimer += 1000;
+                   extern volatile unsigned long timer0_millis;
+                   noInterrupts();
+                    timer0_millis += 1000;
+                   interrupts();
                 }
             #endif // USE_RS485_GATE
            #endif // USE_LOW_POWER
