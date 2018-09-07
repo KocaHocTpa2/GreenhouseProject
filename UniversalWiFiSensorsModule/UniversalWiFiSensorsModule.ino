@@ -482,8 +482,9 @@ void initSensors()
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void setup() 
 {
+  Serial.begin(57600);
+
   #ifdef _DEBUG
-    Serial.begin(57600);
     Serial.println();
     Serial.println(F("Starting..."));
     Serial.setDebugOutput(true);
