@@ -20,12 +20,6 @@ typedef enum
   
 } DS18B20Resolution;
 //--------------------------------------------------------------------------------------------------------------------------------------
-typedef enum
-{
-  DS18B20,
-  DS18S20
-} DSSensorType; // тип сенсора
-//--------------------------------------------------------------------------------------------------------------------------------------
 class DS18B20Support
 {
   private:
@@ -36,7 +30,7 @@ class DS18B20Support
     DS18B20Support() : pin(0) {};
 
     void begin(uint8_t _pin);
-    bool readTemperature(DS18B20Temperature* result, DSSensorType type);
+    bool readTemperature(DS18B20Temperature* result, uint8_t sensorNumber);
     void setResolution(DS18B20Resolution res); 
     
 };

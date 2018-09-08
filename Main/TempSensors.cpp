@@ -6,7 +6,7 @@
 TempSensors* WindowModule = NULL;
 //--------------------------------------------------------------------------------------------------------------------------------------
 #if SUPPORTED_SENSORS > 0
-static TempSensorSettings TEMP_SENSORS[] = { TEMP_SENSORS_PINS };
+static uint8_t TEMP_SENSORS[] = { TEMP_SENSORS_PINS };
 #endif
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifndef USE_WINDOWS_SHIFT_REGISTER
@@ -540,11 +540,11 @@ void TempSensors::Setup()
    {
     State.AddState(StateTemperature,i);
     // запускаем конвертацию с датчиков при старте, через 2 секунды нам вернётся измеренная температура
-    tempSensor.begin(TEMP_SENSORS[i].pin);
+    tempSensor.begin(TEMP_SENSORS[i]);
 
     tempSensor.setResolution(temp12bit); // устанавливаем разрешение датчика
     
-    tempSensor.readTemperature(&tempData,(DSSensorType)TEMP_SENSORS[i].type);
+    tempSensor.readTemperature(&tempData,0);
    }
    #endif
 
@@ -638,30 +638,79 @@ void TempSensors::Update(uint16_t dt)
   // опрашиваем наши датчики
   #if SUPPORTED_SENSORS > 0
   Temperature t;
+
+  #ifdef MULTIPLE_DS_SENSORS_ON_ONE_PIN
+  
+    DSSkipList skipList;
+    for(uint8_t i=0;i<SUPPORTED_SENSORS;i++)
+    {
+      uint8_t pinNumber = TEMP_SENSORS[i];
+      bool found = false;
+      
+      for(size_t k=0;k<skipList.size();k++)
+      {
+        if(skipList[k].pin == pinNumber)
+        {
+          found = true;
+          break;
+        }
+      } // for
+      
+      if(!found)
+      {
+        DSBindingStruct bs;
+        bs.pin = pinNumber;
+        bs.skipCount = 0;
+        skipList.push_back(bs);
+      }
+    } // for
+    
+  #endif // MULTIPLE_DS_SENSORS_ON_ONE_PIN
+  
   for(uint8_t i=0;i<SUPPORTED_SENSORS;i++)
   {
     t.Value = NO_TEMPERATURE_DATA;
     t.Fract = 0;
-    
-    tempSensor.begin(TEMP_SENSORS[i].pin);
-    
-    DS18B20Temperature tempData;
-    
-    if(tempSensor.readTemperature(&tempData,(DSSensorType)TEMP_SENSORS[i].type))
-    {
-      t.Value = tempData.Whole;
-    
-      if(tempData.Negative)
-        t.Value = -t.Value;
 
-      t.Fract = tempData.Fract + smallSensorsChange;
+    uint8_t pinNumber = TEMP_SENSORS[i];
+    tempSensor.begin(pinNumber);
 
-      // convert to Fahrenheit if needed
-      #ifdef MEASURE_TEMPERATURES_IN_FAHRENHEIT
-       t = Temperature::ConvertToFahrenheit(t);
-      #endif      
+    uint8_t skipCount = 0;
+
+    #ifdef MULTIPLE_DS_SENSORS_ON_ONE_PIN
+      // вычисляем, сколько адресов датчиков на текущем пине надо пропустить
+      for(size_t k=0;k<skipList.size();k++)
+      {
+        if(skipList[k].pin == pinNumber)
+        {
+          skipCount = skipList[k].skipCount;
+          skipList[k].skipCount = skipCount+1;
+          break;
+        }
+      } // for
+      // читаем с датчика с учётом пропуска адресов
+      // запоминаем, что нв этом пине пропущен +1 адрес
       
-    }
+    #endif // MULTIPLE_DS_SENSORS_ON_ONE_PIN
+            
+        DS18B20Temperature tempData;
+        
+        if(tempSensor.readTemperature(&tempData, skipCount))
+        {
+          t.Value = tempData.Whole;
+        
+          if(tempData.Negative)
+            t.Value = -t.Value;
+    
+          t.Fract = tempData.Fract + smallSensorsChange;
+    
+          // convert to Fahrenheit if needed
+          #ifdef MEASURE_TEMPERATURES_IN_FAHRENHEIT
+           t = Temperature::ConvertToFahrenheit(t);
+          #endif      
+          
+        }
+    
     State.UpdateState(StateTemperature,i,(void*)&t); // обновляем состояние температуры, индексы датчиков у нас идут без дырок, поэтому с итератором цикла вызывать можно
   } // for
   #endif
