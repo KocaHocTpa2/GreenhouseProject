@@ -1464,6 +1464,407 @@ void TFTSettingsScreen::draw(TFTMenu* menuManager)
 
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef TFT_SENSORS_SCREEN_ENABLED
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+extern imagedatatype tft_sensors_button[];
+#define TFT_SENSORS_PER_SCREEN 9
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// TFTSensorsScreen
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+TFTSensorsScreen::TFTSensorsScreen()
+{
+    offset = 0;
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+TFTSensorsScreen::~TFTSensorsScreen()
+{
+ delete screenButtons;
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSensorsScreen::onActivate(TFTMenu* menuManager)
+{
+  initSensors();
+  
+  if(sensors.size() <= TFT_SENSORS_PER_SCREEN)
+  {
+    screenButtons->disableButton(forwardButton);
+  }
+  else
+  {
+    if(offset + TFT_SENSORS_PER_SCREEN < sensors.size())
+    {
+      screenButtons->enableButton(forwardButton);
+    }
+  }
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSensorsScreen::initSensors()
+{
+  sensors.clear();
+  
+  #ifdef USE_TEMP_SENSORS
+    AbstractModule* temps = MainController->GetModuleByID("STATE");
+    if(temps)
+    {
+      size_t tempCount = temps->State.GetStateCount(StateTemperature);
+      for(size_t i=0;i<tempCount;i++)
+      {
+        TFTSensorData dt;
+        dt.sensorIndex = i;
+        dt.type = tftSensorTemperature;
+        sensors.push_back(dt);
+      }
+    }
+  #endif // USE_TEMP_SENSORS
+
+  #ifdef USE_HUMIDITY_MODULE
+    AbstractModule* hums = MainController->GetModuleByID("HUMIDITY");
+    if(hums)
+    {
+      size_t tempCount = hums->State.GetStateCount(StateTemperature);
+      for(size_t i=0;i<tempCount;i++)
+      {
+        TFTSensorData dt;
+        dt.sensorIndex = i;
+        dt.type = tftSensorHumidity;
+        sensors.push_back(dt);
+      }
+    }  
+  #endif // USE_HUMIDITY_MODULE
+
+  #ifdef USE_LUMINOSITY_MODULE
+    AbstractModule* light = MainController->GetModuleByID("LIGHT");
+    if(light)
+    {
+      size_t tempCount = light->State.GetStateCount(StateLuminosity);
+      for(size_t i=0;i<tempCount;i++)
+      {
+        TFTSensorData dt;
+        dt.sensorIndex = i;
+        dt.type = tftSensorLuminosity;
+        sensors.push_back(dt);
+      }
+    }  
+  #endif // USE_LUMINOSITY_MODULE
+
+  #ifdef USE_SOIL_MOISTURE_MODULE
+    AbstractModule* soil = MainController->GetModuleByID("SOIL");
+    if(soil)
+    {
+      size_t tempCount = soil->State.GetStateCount(StateSoilMoisture);
+      for(size_t i=0;i<tempCount;i++)
+      {
+        TFTSensorData dt;
+        dt.sensorIndex = i;
+        dt.type = tftSensorSoilMoisture;
+        sensors.push_back(dt);
+      }
+    }  
+  #endif // USE_SOIL_MOISTURE_MODULE     
+  
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSensorsScreen::setup(TFTMenu* menuManager)
+{
+
+    UTFT* dc = menuManager->getDC();
+    
+    screenButtons = new UTFT_Buttons_Rus(dc, menuManager->getTouch(),menuManager->getRusPrinter());
+    screenButtons->setTextFont(BigRusFont);
+    screenButtons->setButtonColors(TFT_CHANNELS_BUTTON_COLORS);
+
+    // первая - кнопка назад
+    backButton = addBackButton(menuManager,screenButtons,30);
+
+    UTFTRus* rusPrinter = menuManager->getRusPrinter();
+    
+    int screenWidth = dc->getDisplayXSize();
+    int screenHeight = dc->getDisplayYSize();
+
+    int buttonWidth = 200;
+    int buttonHeight = 40;
+    int leftPos = (screenWidth - buttonWidth)/2;
+    int backwardTopPos = 10;
+    int forwardTopPos = backwardTopPos + 335 + buttonHeight;
+
+    // теперь добавляем наши кнопки листания списка
+    backwardButton = screenButtons->addButton( leftPos ,  backwardTopPos, buttonWidth,  buttonHeight, TFT_LIST_SCROLL_UP_CAPTION);
+    forwardButton = screenButtons->addButton( leftPos ,  forwardTopPos, buttonWidth,  buttonHeight, TFT_LIST_SCROLL_DOWN_CAPTION);
+
+    screenButtons->disableButton(backwardButton);
+
+  
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSensorsScreen::update(TFTMenu* menuManager,uint16_t dt)
+{
+  static uint16_t updateTimer = 0;
+  updateTimer += dt;
+
+ if(screenButtons)
+ {
+    int pressed_button = screenButtons->checkButtons(BuzzerOn);
+   
+    if(pressed_button == backButton)
+    {
+      menuManager->switchToScreen("IDLE");
+      updateTimer = 0;
+      return;
+    }
+    else
+    if(pressed_button == forwardButton)
+    {
+      offset++;
+      if(offset + TFT_SENSORS_PER_SCREEN >= sensors.size())
+      {
+        if(offset + TFT_SENSORS_PER_SCREEN > sensors.size())
+          offset--;
+          
+        screenButtons->disableButton(forwardButton,true);
+      }
+      bool backEnabled = screenButtons->buttonEnabled(backwardButton);
+      if(!backEnabled)
+      {
+        screenButtons->enableButton(backwardButton,true);
+      }
+      drawSensors(menuManager,false);
+      updateTimer = 0;
+      return;
+    }
+    else
+    if(pressed_button == backwardButton)
+    {
+      offset--;
+      if(offset < 1)
+      {
+        screenButtons->disableButton(backwardButton,true);
+      }
+
+      bool forEnabled = screenButtons->buttonEnabled(forwardButton);
+      if(!forEnabled)
+      {
+        screenButtons->enableButton(forwardButton,true);
+      }
+
+      drawSensors(menuManager,false);
+      updateTimer = 0;
+      return;
+    }
+     
+ } // if(screenButtons)
+
+ if(updateTimer > TFT_SENSORS_UPDATE_INTERVAL)
+ {
+  updateTimer = 0;
+  drawSensors(menuManager,false,true);
+ }
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSensorsScreen::drawSensors(TFTMenu* menuManager, bool isBGCleared, bool onlyData)
+{
+  if(!sensors.size())
+    return;
+    
+  size_t from = offset;
+  size_t to = from + TFT_SENSORS_PER_SCREEN;
+  if(to > sensors.size())
+    to = sensors.size();
+
+  uint8_t row = 0;
+  for(size_t i=from;i<to;i++)
+  {
+    drawSensor(menuManager,row,&(sensors[i]),isBGCleared, onlyData);
+    row++;
+    yield();
+  }
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSensorsScreen::drawSensor(TFTMenu* menuManager,uint8_t row, TFTSensorData* data, bool isBGCleared, bool onlyData)
+{
+  UTFT* dc = menuManager->getDC();
+  int screenWidth = dc->getDisplayXSize();
+  dc->setFont(BigRusFont);
+  int fontHeight = dc->getFontYsize();
+  int fontWidth = dc->getFontXsize();
+    
+  int rowLeft = 140;
+  int rowWidth = screenWidth - rowLeft*2;
+  int rowHeight = fontHeight + 16;
+  int rowTop = 70 + row*rowHeight;
+
+  String caption, sensorData;
+  sensorData = '-';
+  
+  switch(data->type)
+  {
+    case tftSensorTemperature:
+    {
+      if(!onlyData)
+        caption = TFT_SENSOR_TEMPERATURE_CAPTION;
+        
+      AbstractModule* mod = MainController->GetModuleByID("STATE");
+      if(mod)
+      {
+        OneState* os = mod->State.GetStateByOrder(StateTemperature,data->sensorIndex);
+        if(os && os->HasData())
+        {
+          sensorData = *os;
+          sensorData += os->GetUnit();
+        }
+      } // if(mod)
+    }
+    break;
+
+    case tftSensorHumidity:
+    {
+      if(!onlyData)
+        caption = TFT_SENSOR_HUMIDITY_CAPTION;
+
+      AbstractModule* mod = MainController->GetModuleByID("HUMIDITY");
+      if(mod)
+      {
+        OneState* os = mod->State.GetStateByOrder(StateTemperature,data->sensorIndex);
+        if(os && os->HasData())
+        {
+          sensorData = *os;
+          sensorData += os->GetUnit();
+        }
+
+        sensorData += '/';
+
+        os = mod->State.GetStateByOrder(StateHumidity,data->sensorIndex);
+        if(os && os->HasData())
+        {
+          sensorData += *os;
+          sensorData += os->GetUnit();
+        }
+        else
+        {
+           sensorData += '-';       
+        }
+        
+      } // if(mod)        
+    }   
+    break;
+
+    case tftSensorLuminosity:
+    {
+      if(!onlyData)
+        caption = TFT_SENSOR_LUMINOSITY_CAPTION;
+
+      AbstractModule* mod = MainController->GetModuleByID("LIGHT");
+      if(mod)
+      {
+        OneState* os = mod->State.GetStateByOrder(StateLuminosity,data->sensorIndex);
+        if(os && os->HasData())
+        {
+          sensorData = *os;
+          sensorData += os->GetUnit();
+        }
+      } // if(mod)        
+    }
+    break;
+
+    case tftSensorSoilMoisture:
+    {
+      if(!onlyData)
+        caption = TFT_SENSOR_SOIL_CAPTION;
+
+      AbstractModule* mod = MainController->GetModuleByID("SOIL");
+      if(mod)
+      {
+        OneState* os = mod->State.GetStateByOrder(StateSoilMoisture,data->sensorIndex);
+        if(os && os->HasData())
+        {
+          sensorData = *os;
+          sensorData += os->GetUnit();
+        }
+      } // if(mod)          
+    }
+    break;
+  }
+
+  caption += (data->sensorIndex + 1);
+
+  
+  int maxDataWidth = fontWidth*15;
+  int dataLen = menuManager->getRusPrinter()->print(sensorData.c_str(), 0,0,0,true);
+  int dataLeft = (rowLeft + rowWidth) - (fontWidth*dataLen);
+
+  if(!onlyData)
+  {
+    if(!isBGCleared)
+    {
+      dc->setColor(INFO_BOX_BACK_COLOR);
+      dc->fillRect(rowLeft, rowTop + 2, rowLeft + rowWidth, rowTop + rowHeight - 2);    
+      yield();
+      dc->setBackColor(INFO_BOX_BACK_COLOR);
+      dc->setColor(SENSOR_BOX_FONT_COLOR);
+    }
+    
+    menuManager->getRusPrinter()->print(caption.c_str(), rowLeft,rowTop + (rowHeight-fontHeight)/2);
+  }
+  else
+  {
+    if(!isBGCleared)
+    {
+      int maxDataLeft = (rowLeft + rowWidth) - maxDataWidth;
+      dc->setColor(INFO_BOX_BACK_COLOR);
+      dc->fillRect(maxDataLeft, rowTop + 2, maxDataLeft + maxDataWidth, rowTop + rowHeight - 2);
+      yield();        
+    }
+  }
+
+  dc->setBackColor(INFO_BOX_BACK_COLOR);
+  dc->setColor(SENSOR_BOX_FONT_COLOR);
+  
+  menuManager->getRusPrinter()->print(sensorData.c_str(), dataLeft,rowTop + (rowHeight-fontHeight)/2);
+  yield();
+  
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSensorsScreen::drawListFrame(TFTMenu* menuManager)
+{
+  UTFT* dc = menuManager->getDC();
+  int screenWidth = dc->getDisplayXSize();
+  int fontHeight = dc->getFontYsize();
+
+  dc->setColor(INFO_BOX_BACK_COLOR);
+  dc->fillRoundRect(130,60,screenWidth - 130, 370);
+
+  int rowLeft = 140;
+  int rowWidth = screenWidth - rowLeft*2;
+  int rowHeight = fontHeight + 16;
+  int rowTop = 70;
+
+  dc->setBackColor(INFO_BOX_BACK_COLOR);
+  dc->setColor(SENSOR_BOX_FONT_COLOR);
+
+  for(uint8_t i=0;i<TFT_SENSORS_PER_SCREEN;i++)
+  {
+    dc->drawLine(rowLeft, rowTop, rowLeft + rowWidth, rowTop);
+    rowTop += rowHeight;
+    yield();
+    
+  }
+    
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTSensorsScreen::draw(TFTMenu* menuManager)
+{
+  UNUSED(menuManager);
+
+  if(screenButtons)
+  {
+    screenButtons->drawButtons(drawButtonsYield);
+  }
+  drawListFrame(menuManager);
+  drawSensors(menuManager, true);
+
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#endif // TFT_SENSORS_SCREEN_ENABLED
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_TEMP_SENSORS
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 extern imagedatatype tft_windows_button[];
@@ -2004,8 +2405,17 @@ void TFTIdleScreen::setup(TFTMenu* menuManager)
   }
   #endif
 
+  #ifdef TFT_SENSORS_SCREEN_ENABLED
+  availButtons++;
+  #endif
+
   // у нас есть availButtons кнопок, между ними - availButtons-1 пробел, вычисляем левую координату для первой кнопки
   int curButtonLeft = (screenWidth - ( availButtons*TFT_IDLE_SCREEN_BUTTON_WIDTH + (availButtons-1)*TFT_IDLE_SCREEN_BUTTON_SPACING ))/2;
+
+  #ifdef TFT_SENSORS_SCREEN_ENABLED
+    tftSensorsButton = screenButtons->addButton( curButtonLeft ,  buttonsTop, TFT_IDLE_SCREEN_BUTTON_WIDTH,  TFT_IDLE_SCREEN_BUTTON_HEIGHT, tft_sensors_button ,BUTTON_BITMAP);
+    curButtonLeft += TFT_IDLE_SCREEN_BUTTON_WIDTH + TFT_IDLE_SCREEN_BUTTON_SPACING;
+  #endif
 
   #ifdef USE_TEMP_SENSORS
     windowsButton = screenButtons->addButton( curButtonLeft ,  buttonsTop, TFT_IDLE_SCREEN_BUTTON_WIDTH,  TFT_IDLE_SCREEN_BUTTON_HEIGHT, tft_windows_button ,BUTTON_BITMAP);
@@ -2051,6 +2461,15 @@ void TFTIdleScreen::update(TFTMenu* menuManager,uint16_t dt)
 
   // Смотрим, какая кнопка нажата
   int pressed_button = screenButtons->checkButtons(BuzzerOn);
+
+
+#ifdef TFT_SENSORS_SCREEN_ENABLED
+  if(pressed_button == tftSensorsButton)
+  {
+    menuManager->switchToScreen("SENSORS");
+    return;
+  }
+#endif  
 
 #ifdef USE_TEMP_SENSORS
   if(pressed_button == windowsButton)
@@ -2205,6 +2624,17 @@ void TFTMenu::setup()
   si.screenName = "IDLE"; 
   si.screen = idleScreen;  
   screens.push_back(si);
+
+
+  // добавляем экран датчиков
+  #ifdef TFT_SENSORS_SCREEN_ENABLED
+    AbstractTFTScreen* sensorsScreen = new TFTSensorsScreen();
+    sensorsScreen->setup(this);
+    TFTScreenInfo sdtscr; 
+    sdtscr.screenName = "SENSORS"; 
+    sdtscr.screen = sensorsScreen;  
+    screens.push_back(sdtscr);
+  #endif    
 
 
   // добавляем экран управления фрамугами

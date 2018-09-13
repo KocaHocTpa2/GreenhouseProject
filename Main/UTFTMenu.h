@@ -21,7 +21,7 @@
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #define TFT_IDLE_SCREEN_BUTTON_WIDTH 128
 #define TFT_IDLE_SCREEN_BUTTON_HEIGHT 90
-#define TFT_IDLE_SCREEN_BUTTON_SPACING 10
+#define TFT_IDLE_SCREEN_BUTTON_SPACING 5
 
 #define INFO_BOX_WIDTH 240
 #define INFO_BOX_HEIGHT 80
@@ -149,6 +149,10 @@ private:
   int windowsButton;
   TFTInfoBox* windowStatusBox;
   void drawWindowStatus(TFTMenu* menuManager);
+#endif
+
+#ifdef TFT_SENSORS_SCREEN_ENABLED
+  int tftSensorsButton;
 #endif
 
 #ifdef USE_WATERING_MODULE
@@ -291,6 +295,56 @@ class TFTSceneScreen : public AbstractTFTScreen
 };
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #endif // USE_SCENE_MODULE
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef TFT_SENSORS_SCREEN_ENABLED
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+typedef enum
+{
+  tftSensorTemperature,
+  tftSensorHumidity,
+  tftSensorLuminosity,
+  tftSensorSoilMoisture,
+  
+} TFTSensorType;
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+typedef struct
+{
+  TFTSensorType type;
+  uint8_t sensorIndex;
+  
+} TFTSensorData;
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+typedef Vector<TFTSensorData> TFTSensorsList;
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+class TFTSensorsScreen : public AbstractTFTScreen
+{
+  public:
+  
+    TFTSensorsScreen();
+    ~TFTSensorsScreen();
+    
+    void setup(TFTMenu* menuManager);
+    void update(TFTMenu* menuManager,uint16_t dt);
+    void draw(TFTMenu* menuManager);
+    void onActivate(TFTMenu* menuManager);
+
+    private:
+      int backButton, backwardButton, forwardButton;
+      UTFT_Buttons_Rus* screenButtons;
+
+      int offset;
+      TFTSensorsList sensors;
+      void initSensors();
+
+      void drawListFrame(TFTMenu* menuManager);
+      void drawSensors(TFTMenu* menuManager, bool isBGCleared, bool onlyData=false);
+      void drawSensor(TFTMenu* menuManager,uint8_t row, TFTSensorData* data, bool isBGCleared, bool onlyData=false);
+      
+
+
+};
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#endif // TFT_SENSORS_SCREEN_ENABLED
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 class TFTSettingsScreen : public AbstractTFTScreen
 {
