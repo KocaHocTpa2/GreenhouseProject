@@ -326,54 +326,98 @@ AlertModule alertsModule;
 //--------------------------------------------------------------------------------------------------------------------------------
 bool canCallYield = false;
 //--------------------------------------------------------------------------------------------------------------------------------
-void setup() 
+void initI2C()
 {
-  canCallYield = false;
-
-#if (TARGET_BOARD == DUE_BOARD)
-  while(!Serial); // ждём инициализации Serial
-#endif
-
-  Serial.begin(SERIAL_BAUD_RATE); // запускаем Serial на нужной скорости
-
-  START_LOG(1);
-
-  uint8_t wireScl = 21;
-  #if TARGET_BOARD == STM32_BOARD
-  WORK_STATUS.PinMode(20,INPUT,false);
-  WORK_STATUS.PinMode(21,OUTPUT,false);
-  #else
-  WORK_STATUS.PinMode(SDA,INPUT,false);
-  WORK_STATUS.PinMode(SCL,OUTPUT,false);
-  wireScl = SCL;
-  #endif
-
-  START_LOG(2);
-  
-  pinMode(wireScl,OUTPUT);
-  for(uint8_t i=0;i<8;i++)
-  {
-    digitalWrite(wireScl,HIGH);
-    delayMicroseconds(3);
-    digitalWrite(wireScl,LOW);
-    delayMicroseconds(3);   
-  }
-  
-  pinMode(wireScl,INPUT);
-
-  START_LOG(3);
-  
-   Wire.begin();
-   Wire.setClock(I2C_SPEED);
 
    #if TARGET_BOARD == MEGA_BOARD
-   #else
+   
+    Wire.begin();
+    Wire.setClock(I2C_SPEED);
+
+   #elif TARGET_BOARD == DUE_BOARD
+
+    // инициализация I2C, специфичная для Arduino Due
+
+    // инициализируем стандартными методами
+      Wire.begin();
+      Wire.setClock(I2C_SPEED);
+
+      if(DS3231_WIRE_NUMBER == 1)
+      {
+        Wire1.begin();
+        Wire1.setClock(I2C_SPEED);
+      }    
+   
+   #elif TARGET_BOARD == STM32_BOARD
+
+    // инициализация для STM32
+      Wire.begin();
+      Wire.setClock(I2C_SPEED);
+
       if(DS3231_WIRE_NUMBER == 1)
       {
         Wire1.begin();
         Wire1.setClock(I2C_SPEED);
       }
+   #else
+      #error "UNKNOWN TARGET BOARD!!!"
    #endif
+     
+}
+//--------------------------------------------------------------------------------------------------------------------------------
+void doResetI2C(uint8_t pin)
+{
+  pinMode(pin,OUTPUT);
+  for(uint8_t i=0;i<8;i++)
+  {
+    digitalWrite(pin,HIGH);
+    delayMicroseconds(3);
+    digitalWrite(pin,LOW);
+    delayMicroseconds(3);   
+  }
+  
+  pinMode(pin,INPUT);   
+}
+//--------------------------------------------------------------------------------------------------------------------------------
+void resetI2C()
+{
+  doResetI2C(SCL);
+  
+ #if TARGET_BOARD == DUE_BOARD
+    if(DS3231_WIRE_NUMBER == 1)
+      doResetI2C(SCL1);     
+ #endif 
+}
+//--------------------------------------------------------------------------------------------------------------------------------
+void setup() 
+{
+  canCallYield = false;
+
+
+  Serial.begin(SERIAL_BAUD_RATE); // запускаем Serial на нужной скорости
+
+#if (TARGET_BOARD == DUE_BOARD)
+  while(!Serial); // ждём инициализации Serial
+#endif
+
+  START_LOG(1);
+
+ 
+  #if TARGET_BOARD == STM32_BOARD
+    WORK_STATUS.PinMode(20,INPUT,false);
+    WORK_STATUS.PinMode(21,OUTPUT,false);
+  #else
+    WORK_STATUS.PinMode(SDA,INPUT,false);
+    WORK_STATUS.PinMode(SCL,OUTPUT,false);
+  #endif
+
+  START_LOG(2);
+
+  resetI2C();
+
+  START_LOG(3);
+
+  initI2C();  
 
    START_LOG(4);
 
