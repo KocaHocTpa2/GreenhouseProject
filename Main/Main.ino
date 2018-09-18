@@ -365,27 +365,40 @@ void initI2C()
      
 }
 //--------------------------------------------------------------------------------------------------------------------------------
-void doResetI2C(uint8_t pin)
+void doResetI2C(uint8_t sclPin, uint8_t sdaPin)
 {
-  pinMode(pin,OUTPUT);
-  for(uint8_t i=0;i<8;i++)
-  {
-    digitalWrite(pin,HIGH);
-    delayMicroseconds(3);
-    digitalWrite(pin,LOW);
-    delayMicroseconds(3);   
-  }
+  pinMode(sdaPin, OUTPUT);
+  digitalWrite(sdaPin,HIGH);
+  pinMode(sclPin,OUTPUT);
   
-  pinMode(pin,INPUT);   
+  for(uint8_t i=0;i<10;i++) // Send NACK signal
+  {
+    digitalWrite(sclPin,HIGH);
+    delayMicroseconds(5);
+    digitalWrite(sclPin,LOW);
+    delayMicroseconds(5);   
+  }
+
+  // Send STOP signal
+  digitalWrite(sdaPin,LOW);
+  delayMicroseconds(5);
+  digitalWrite(sclPin,HIGH);
+  delayMicroseconds(2);
+  digitalWrite(sdaPin,HIGH);
+  delayMicroseconds(2);
+  
+  
+  pinMode(sclPin,INPUT);   
+  pinMode(sdaPin,INPUT);   
 }
 //--------------------------------------------------------------------------------------------------------------------------------
 void resetI2C()
 {
-  doResetI2C(SCL);
+  doResetI2C(SCL, SDA);
   
  #if TARGET_BOARD == DUE_BOARD
     if(DS3231_WIRE_NUMBER == 1)
-      doResetI2C(SCL1);     
+      doResetI2C(SCL1, SDA1);     
  #endif 
 }
 //--------------------------------------------------------------------------------------------------------------------------------
