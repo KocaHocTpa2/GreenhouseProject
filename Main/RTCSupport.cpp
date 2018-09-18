@@ -308,7 +308,7 @@ uint8_t RealtimeClock::_readByte()
   {
     digitalWrite(_scl_pin, HIGH);
     currentBit = digitalRead(_sda_pin);
-    value |= (currentBit << 7 - i);
+    value |= (currentBit << (7 - i));
     delayMicroseconds(1);
     digitalWrite(_scl_pin, LOW);
   }
@@ -373,7 +373,7 @@ void RealtimeClock::setTime(uint8_t second, uint8_t minute, uint8_t hour, uint8_
 
 #if TARGET_BOARD == DUE_BOARD
 
-  if (((hour >= 0) && (hour < 24)) && ((minute >= 0) && (minute < 60)) && ((second >= 0) && (second < 60))&& ((dayOfMonth > 0) && (dayOfMonth <= 31)) && ((month > 0) && (month <= 12)) && ((year >= 2000) && (year < 3000)))
+  if ( (hour < 24) && (minute < 60) && (second < 60) && ((dayOfMonth > 0) && (dayOfMonth <= 31)) && ((month > 0) && (month <= 12)) && ((year >= 2000) && (year < 3000)))
   {
     year -= 2000;
     _writeRegister(REG_HOUR, _encode(hour));
@@ -466,41 +466,56 @@ Temperature RealtimeClock::getTemperature()
 //--------------------------------------------------------------------------------------------------------------------------------------
 RTCTime RealtimeClock::getTime()
 {
+  static RTCTime t;
+  static uint32_t lastRequestTime = 0;
+  
+  if(!lastRequestTime)
+    memset(&t,0,sizeof(t));
+  
   #if TARGET_BOARD == DUE_BOARD
 
-      RTCTime t;
+      if(!lastRequestTime || ( (millis() - lastRequestTime) > 999) )
+      {
+        _burstRead();
+        t.second = _decode(_burstArray[0]);
+        t.minute = _decode(_burstArray[1]);
+        t.hour = _decodeH(_burstArray[2]);
+        t.dayOfWeek = _burstArray[3];
+        t.dayOfMonth = _decode(_burstArray[4]);
+        t.month = _decode(_burstArray[5]);
+        t.year = _decodeY(_burstArray[6]) + 2000;
         
-      _burstRead();
-      t.second = _decode(_burstArray[0]);
-      t.minute = _decode(_burstArray[1]);
-      t.hour = _decodeH(_burstArray[2]);
-      t.dayOfWeek = _burstArray[3];
-      t.dayOfMonth = _decode(_burstArray[4]);
-      t.month = _decode(_burstArray[5]);
-      t.year = _decodeY(_burstArray[6]) + 2000;
+        lastRequestTime = millis();
+      }
+      
       return t;
   
   #else
   
-      RTCTime t;
-    
-      wireInterface->beginTransmission(DS3231Address);
-      wireInterface->write(0); // говорим, что мы собираемся читать с регистра 0
-      
-      if(wireInterface->endTransmission() != 0) // ошибка
-        return t;
-      
-      if(wireInterface->requestFrom(DS3231Address, 7) == 7) // читаем 7 байт, начиная с регистра 0
-      {
-          t.second = bcd2dec(wireInterface->read() & 0x7F);
-          t.minute = bcd2dec(wireInterface->read());
-          t.hour = bcd2dec(wireInterface->read() & 0x3F);
-          t.dayOfWeek = bcd2dec(wireInterface->read());
-          t.dayOfMonth = bcd2dec(wireInterface->read());
-          t.month = bcd2dec(wireInterface->read());
-          t.year = bcd2dec(wireInterface->read());     
-          t.year += 2000; // приводим время к нормальному формату
-      } // if
+    // NOT Due board
+
+     if(!lastRequestTime || ( (millis() - lastRequestTime) > 999) )
+     {
+        wireInterface->beginTransmission(DS3231Address);
+        wireInterface->write(0); // говорим, что мы собираемся читать с регистра 0
+        
+        if(wireInterface->endTransmission() != 0) // ошибка
+          return t;
+        
+        if(wireInterface->requestFrom(DS3231Address, 7) == 7) // читаем 7 байт, начиная с регистра 0
+        {
+            t.second = bcd2dec(wireInterface->read() & 0x7F);
+            t.minute = bcd2dec(wireInterface->read());
+            t.hour = bcd2dec(wireInterface->read() & 0x3F);
+            t.dayOfWeek = bcd2dec(wireInterface->read());
+            t.dayOfMonth = bcd2dec(wireInterface->read());
+            t.month = bcd2dec(wireInterface->read());
+            t.year = bcd2dec(wireInterface->read());     
+            t.year += 2000; // приводим время к нормальному формату
+        } // if
+
+        lastRequestTime = millis();
+     }
       
       return t;
   #endif
