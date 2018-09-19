@@ -132,7 +132,13 @@ private:
 
   #ifdef USE_SMS_MODULE
     uint8_t gsmSignalQuality;
-    void drawGSMSignalQuality(TFTMenu* menuManager);
+    bool gprsAvailable;
+    int drawGSMIcons(TFTMenu* menuManager, int curIconRightMargin, bool qualityChanged, bool gprsChanged);
+  #endif
+
+  #ifdef USE_WIFI_MODULE
+    bool connectedToRouter;
+    int drawWiFiIcons(TFTMenu* menuManager, int curIconRightMargin, bool connectChanged);
   #endif
 
   #ifdef USE_DS3231_REALTIME_CLOCK

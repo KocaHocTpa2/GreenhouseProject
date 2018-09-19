@@ -10,9 +10,28 @@
 #include "Buzzer.h"
 #endif
 
-#ifdef USE_SMS_MODULE
+#if defined(USE_SMS_MODULE) || defined(USE_WIFI_MODULE)
   #include "CoreTransport.h"
 #endif
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// This code block is only needed to support multiple
+// MCU architectures in a single sketch.
+#if defined(__AVR__)
+  #define imagedatatype  unsigned int
+#elif defined(__PIC32MX__)
+  #define imagedatatype  unsigned short
+#elif defined(__arm__)
+  #define imagedatatype  unsigned short
+#endif
+// End of multi-architecture block
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_WIFI_MODULE
+extern imagedatatype wifi_active[];
+extern imagedatatype wifi_inactive[];
+#endif
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 TFTMenu* tftMenuManager;
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -30,17 +49,6 @@ void drawButtonsYield() // вызывается после отрисовки к
 {
   yield();
 }
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-// This code block is only needed to support multiple
-// MCU architectures in a single sketch.
-#if defined(__AVR__)
-  #define imagedatatype  unsigned int
-#elif defined(__PIC32MX__)
-  #define imagedatatype  unsigned short
-#elif defined(__arm__)
-  #define imagedatatype  unsigned short
-#endif
-// End of multi-architecture block
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #if TFT_SENSOR_BOXES_COUNT > 0
 TFTSensorInfo TFTSensors [TFT_SENSOR_BOXES_COUNT] = { TFT_SENSORS };
@@ -1918,7 +1926,12 @@ TFTIdleScreen::TFTIdleScreen() : AbstractTFTScreen()
 
   #ifdef USE_SMS_MODULE
     gsmSignalQuality = 0; // нет сигнала
-  #endif  
+    gprsAvailable = false;
+  #endif
+
+  #ifdef USE_WIFI_MODULE
+    connectedToRouter = false;
+  #endif   
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 TFTIdleScreen::~TFTIdleScreen()
@@ -2459,10 +2472,9 @@ void TFTIdleScreen::onActivate(TFTMenu* menuManager)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_SMS_MODULE
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void TFTIdleScreen::drawGSMSignalQuality(TFTMenu* menuManager)
+int TFTIdleScreen::drawGSMIcons(TFTMenu* menuManager, int curIconRightMargin, bool qualityChanged, bool gprsChanged)
 {
    UTFT* dc = menuManager->getDC();
-   int screenWidth = dc->getDisplayXSize();
    int totalSegments = 4; // рисуем 4 сегмента
    int segmentWidth = 8; // ширина сегмента
    int signalHeight = 20; // высота сегмента
@@ -2473,128 +2485,201 @@ void TFTIdleScreen::drawGSMSignalQuality(TFTMenu* menuManager)
    bool fillSegment3 = false;
    bool fillSegment4 = false;
 
-   switch(gsmSignalQuality)
-    {
-      case 1: 
-        fillSegment1 = true; // 25%
-      break;
+   if(qualityChanged)
+   {
 
-      case 2: 
-        fillSegment1 = true; // 50%
-        fillSegment2 = true;
-      break;
+     switch(gsmSignalQuality)
+      {
+        case 1: 
+          fillSegment1 = true; // 25%
+        break;
+  
+        case 2: 
+          fillSegment1 = true; // 50%
+          fillSegment2 = true;
+        break;
+  
+        case 3: 
+          fillSegment1 = true; // 75%
+          fillSegment2 = true;
+          fillSegment3 = true;
+        break;
+  
+        case 4:
+          fillSegment1 = true; // 100%
+          fillSegment2 = true;
+          fillSegment3 = true;
+          fillSegment4 = true;
+        break;
+        
+        case 0:
+        default:
+          // нет сигнала
+        break;
+       
+      } // switch
+   } // qualityChanged
 
-      case 3: 
-        fillSegment1 = true; // 75%
-        fillSegment2 = true;
-        fillSegment3 = true;
-      break;
-
-      case 4:
-        fillSegment1 = true; // 100%
-        fillSegment2 = true;
-        fillSegment3 = true;
-        fillSegment4 = true;
-      break;
-      
-      case 0:
-      default:
-        // нет сигнала
-      break;
-     
-    } // switch
-
-    int curLeft = screenWidth - (totalSegments*segmentWidth) - (totalSegments-1)*segmentSpacing - 16;    
-
-    // рисуем первый сегмент
+    int initialLeft = curIconRightMargin - (totalSegments*segmentWidth) - (totalSegments-1)*segmentSpacing; 
     int initialTop = 10;
 
-
-    int curHeight = signalHeight/4;
-    int curTop = initialTop + (signalHeight - curHeight);
-
-    if(fillSegment1)
+    if(qualityChanged)
     {
-      dc->setColor(INFO_BOX_CAPTION_COLOR);
-      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
-    }
-    else
-    {
-      dc->setColor(TFT_BACK_COLOR);
-      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
-      yield();           
-      dc->setColor(INFO_BOX_CAPTION_COLOR);
-      dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
-    }
-
-    yield();
-
-    // рисуем второй сегмент
-    curLeft += segmentWidth + segmentSpacing;
-    curHeight = (signalHeight/4)*2;
-    curTop = initialTop + (signalHeight - curHeight);
-
-    if(fillSegment2)
-    {
-      dc->setColor(INFO_BOX_CAPTION_COLOR);
-      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
-    }
-    else
-    {
-      dc->setColor(TFT_BACK_COLOR);
-      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
-      yield();            
-      dc->setColor(INFO_BOX_CAPTION_COLOR);
-      dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
-    }
-
-    yield();
+        // рисуем первый сегмент
+        int curLeft = initialLeft;      
     
-    // рисуем третий сегмент
-    curLeft += segmentWidth + segmentSpacing;
-    curHeight = (signalHeight/4)*3;
-    curTop = initialTop + (signalHeight - curHeight);
-
-    if(fillSegment3)
-    {
-      dc->setColor(INFO_BOX_CAPTION_COLOR);
-      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
-    }
-    else
-    {
-      dc->setColor(TFT_BACK_COLOR);
-      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
-      yield();          
-      dc->setColor(INFO_BOX_CAPTION_COLOR);
-      dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
-    }
-
-    yield();
+        int curHeight = signalHeight/4;
+        int curTop = initialTop + (signalHeight - curHeight);    
     
-    // рисуем четвертый сегмент
-    curLeft += segmentWidth + segmentSpacing;
-    curHeight = signalHeight;
-    curTop = initialTop;
+        if(fillSegment1)
+        {
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+          yield();           
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+        }
+    
+        yield();
+    
+        // рисуем второй сегмент
+        curLeft += segmentWidth + segmentSpacing;
+        curHeight = (signalHeight/4)*2;
+        curTop = initialTop + (signalHeight - curHeight);
+    
+        if(fillSegment2)
+        {
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+          yield();            
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+        }
+    
+        yield();
+        
+        // рисуем третий сегмент
+        curLeft += segmentWidth + segmentSpacing;
+        curHeight = (signalHeight/4)*3;
+        curTop = initialTop + (signalHeight - curHeight);
+    
+        if(fillSegment3)
+        {
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+          yield();          
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+        }
+    
+        yield();
+        
+        // рисуем четвертый сегмент
+        curLeft += segmentWidth + segmentSpacing;
+        curHeight = signalHeight;
+        curTop = initialTop;
+    
+        if(fillSegment4)
+        {
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+          yield();         
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+        }
+    
+        yield();
+    } // qualityChanged
 
-    if(fillSegment4)
-    {
-      dc->setColor(INFO_BOX_CAPTION_COLOR);
-      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
-    }
-    else
-    {
-      dc->setColor(TFT_BACK_COLOR);
-      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
-      yield();         
-      dc->setColor(INFO_BOX_CAPTION_COLOR);
-      dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
-    }
+    // теперь рисуем иконку GPRS
+    dc->setFont(SmallRusFont);
+    int fontWidth = dc->getFontXsize();
+    initialLeft -= 14;
+    initialLeft -= fontWidth*4;
+    
+    if(gprsChanged)
+    {   
+        String strToDraw;
+        strToDraw = F("GPRS");
+        
+        dc->setColor(INFO_BOX_CAPTION_COLOR);
+        dc->setBackColor(TFT_BACK_COLOR);
+    
+        if(gprsAvailable)
+        {
+          dc->fillRect(initialLeft,initialTop,initialLeft+fontWidth*4+6,initialTop+signalHeight);
+          dc->setColor(SENSOR_BOX_FONT_COLOR);
+          dc->setBackColor(INFO_BOX_CAPTION_COLOR);
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->setBackColor(TFT_BACK_COLOR);
+          dc->fillRect(initialLeft,initialTop,initialLeft+fontWidth*4+6,initialTop+signalHeight);
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(initialLeft,initialTop,initialLeft+fontWidth*4+6,initialTop+signalHeight);
+        }
+        
+        menuManager->getRusPrinter()->print(strToDraw.c_str(),initialLeft+5,initialTop+5);
+    
+    
+    
+    } // gprsChanged
 
-    yield();
+    dc->setFont(BigRusFont);
+    return initialLeft;
  
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #endif // USE_SMS_MODULE
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_WIFI_MODULE
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+int TFTIdleScreen::drawWiFiIcons(TFTMenu* menuManager, int curIconRightMargin, bool connectChanged)
+{
+  int curLeft = curIconRightMargin - 26;
+
+  if(connectChanged)
+  {
+    UTFT* dc = menuManager->getDC();
+  
+    if(connectedToRouter)
+    {
+      dc->drawBitmap(curLeft,10,20,20,wifi_active);
+    }
+    else
+    {
+      dc->drawBitmap(curLeft,10,20,20,wifi_inactive);
+    }
+  
+    yield();
+  } // connectChanged
+
+  return curLeft;
+  
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#endif // USE_WIFI_MODULE
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void TFTIdleScreen::update(TFTMenu* menuManager,uint16_t dt)
 {
@@ -2603,14 +2688,28 @@ void TFTIdleScreen::update(TFTMenu* menuManager,uint16_t dt)
     DrawDateTime(menuManager);
   #endif
 
+  UTFT* dc = menuManager->getDC();
+  int screenWidth = dc->getDisplayXSize();   
+  int curIconRightMargin = screenWidth - 16;
+  
+
   #ifdef USE_SMS_MODULE
     uint8_t q = SIM800.getSignalQuality();
-    if(gsmSignalQuality != q)
-    {
-      gsmSignalQuality = q;
-      drawGSMSignalQuality(menuManager);
-    }
+    bool hasGprs = SIM800.hasGPRSConnection();
+    bool sigChanges = q != gsmSignalQuality;
+    bool gprsChanges = gprsAvailable != hasGprs;
+    gsmSignalQuality = q;
+    gprsAvailable = hasGprs;
+    
+    curIconRightMargin = drawGSMIcons(menuManager,curIconRightMargin,sigChanges, gprsChanges);
   #endif  
+
+  #ifdef USE_WIFI_MODULE
+    bool conToRouter = ESP.isConnectedToRouter();
+    bool conChanges = connectedToRouter != conToRouter;
+    connectedToRouter = conToRouter;
+    curIconRightMargin = drawWiFiIcons(menuManager,curIconRightMargin,conChanges);
+  #endif 
 
   // Смотрим, какая кнопка нажата
   int pressed_button = screenButtons->checkButtons(BuzzerOn);
@@ -2725,9 +2824,17 @@ void TFTIdleScreen::draw(TFTMenu* menuManager)
 
   #endif
 
+  UTFT* dc = menuManager->getDC();
+  int screenWidth = dc->getDisplayXSize();   
+  int curIconRightMargin = screenWidth - 16;
+
   #ifdef USE_SMS_MODULE
-    drawGSMSignalQuality(menuManager);
+    curIconRightMargin = drawGSMIcons(menuManager,curIconRightMargin,true,true);
   #endif
+
+  #ifdef USE_WIFI_MODULE
+    curIconRightMargin = drawWiFiIcons(menuManager,curIconRightMargin,true);
+  #endif   
 
   
 }

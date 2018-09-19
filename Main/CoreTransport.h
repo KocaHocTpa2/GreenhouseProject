@@ -316,6 +316,8 @@ class CoreESPTransport : public CoreTransport
     void restart();
     void readFromStream();
 
+    bool isConnectedToRouter() { return flags.connectedToRouter; }
+
   protected:
 
     virtual void beginWrite(CoreTransportClient& client); // начинаем писать в транспорт с клиента
@@ -495,6 +497,7 @@ class CoreSIM800Transport : public CoreTransport
     #endif
 
     uint8_t getSignalQuality() { return signalQuality; }
+    bool hasGPRSConnection() {return flags.gprsAvailable; }
 
   protected:
 
