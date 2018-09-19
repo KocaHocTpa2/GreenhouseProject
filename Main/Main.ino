@@ -624,6 +624,10 @@ void setup()
 
  START_LOG(34);
 
+  // collect garbage
+  while(Serial.available()) 
+    Serial.read();
+
   // Печатаем в Serial готовность
   Serial.print(READY);
 

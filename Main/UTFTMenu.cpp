@@ -2657,7 +2657,7 @@ int TFTIdleScreen::drawGSMIcons(TFTMenu* menuManager, int curIconRightMargin, bo
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 int TFTIdleScreen::drawWiFiIcons(TFTMenu* menuManager, int curIconRightMargin, bool connectChanged)
 {
-  int curLeft = curIconRightMargin - 26;
+  int curLeft = curIconRightMargin - 30;
 
   if(connectChanged)
   {
