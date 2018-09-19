@@ -492,7 +492,9 @@ class CoreSIM800Transport : public CoreTransport
 
     #ifdef GSM_DEBUG_MODE
     void dumpReceiveBuffer();
-    #endif    
+    #endif
+
+    uint8_t getSignalQuality() { return signalQuality; }
 
   protected:
 
@@ -501,6 +503,8 @@ class CoreSIM800Transport : public CoreTransport
     virtual void beginDisconnect(CoreTransportClient& client); // начинаем отсоединение от адреса
 
   private:
+
+      uint8_t signalQuality;
 
       void rebootModem();
 

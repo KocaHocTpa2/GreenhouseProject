@@ -9,6 +9,10 @@
 #ifdef USE_BUZZER
 #include "Buzzer.h"
 #endif
+
+#ifdef USE_SMS_MODULE
+  #include "CoreTransport.h"
+#endif
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 TFTMenu* tftMenuManager;
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1911,6 +1915,10 @@ TFTIdleScreen::TFTIdleScreen() : AbstractTFTScreen()
   #ifdef USE_DS3231_REALTIME_CLOCK
       lastMinute = -1;
   #endif  
+
+  #ifdef USE_SMS_MODULE
+    gsmSignalQuality = 0; // нет сигнала
+  #endif  
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 TFTIdleScreen::~TFTIdleScreen()
@@ -2342,22 +2350,22 @@ void TFTIdleScreen::setup(TFTMenu* menuManager)
 
   if(availStatusBoxes > 0)
   {
-    curInfoBoxLeft = (screenWidth - (availStatusBoxes*INFO_BOX_WIDTH + (availStatusBoxes-1)*INFO_BOX_V_SPACING))/2;//INFO_BOX_V_SPACING;
+    curInfoBoxLeft = (screenWidth - (availStatusBoxes*INFO_BOX_WIDTH + (availStatusBoxes-1)*INFO_BOX_V_SPACING))/2;
   
     #ifdef USE_TEMP_SENSORS
-        windowStatusBox = new TFTInfoBox(TFT_WINDOW_STATUS_CAPTION,INFO_BOX_WIDTH,INFO_BOX_HEIGHT,curInfoBoxLeft,INFO_BOX_V_SPACING);
+        windowStatusBox = new TFTInfoBox(TFT_WINDOW_STATUS_CAPTION,INFO_BOX_WIDTH,INFO_BOX_HEIGHT,curInfoBoxLeft,INFO_BOX_V_SPACING*2);
         curInfoBoxLeft += INFO_BOX_WIDTH + INFO_BOX_V_SPACING;
         availButtons++;
     #endif
     
     #ifdef USE_WATERING_MODULE
-        waterStatusBox = new TFTInfoBox(TFT_WATER_STATUS_CAPTION,INFO_BOX_WIDTH,INFO_BOX_HEIGHT,curInfoBoxLeft,INFO_BOX_V_SPACING);
+        waterStatusBox = new TFTInfoBox(TFT_WATER_STATUS_CAPTION,INFO_BOX_WIDTH,INFO_BOX_HEIGHT,curInfoBoxLeft,INFO_BOX_V_SPACING*2);
         curInfoBoxLeft += INFO_BOX_WIDTH + INFO_BOX_V_SPACING;
         availButtons++;
     #endif
     
     #ifdef USE_LUMINOSITY_MODULE
-        lightStatusBox = new TFTInfoBox(TFT_LIGHT_STATUS_CAPTION,INFO_BOX_WIDTH,INFO_BOX_HEIGHT,curInfoBoxLeft,INFO_BOX_V_SPACING);
+        lightStatusBox = new TFTInfoBox(TFT_LIGHT_STATUS_CAPTION,INFO_BOX_WIDTH,INFO_BOX_HEIGHT,curInfoBoxLeft,INFO_BOX_V_SPACING*2);
         curInfoBoxLeft += INFO_BOX_WIDTH + INFO_BOX_V_SPACING;
         availButtons++;
     #endif
@@ -2376,7 +2384,7 @@ void TFTIdleScreen::setup(TFTMenu* menuManager)
   
   int startLeft = (screenWidth - (SENSOR_BOXES_PER_LINE*SENSOR_BOX_WIDTH + (SENSOR_BOXES_PER_LINE-1)*SENSOR_BOX_V_SPACING))/2;
   curInfoBoxLeft = startLeft;
-  int sensorsTop = availStatusBoxes ? (INFO_BOX_V_SPACING + INFO_BOX_HEIGHT + SENSOR_BOX_V_SPACING) : SENSOR_BOX_V_SPACING;
+  int sensorsTop = availStatusBoxes ? (INFO_BOX_V_SPACING*2 + INFO_BOX_HEIGHT + SENSOR_BOX_V_SPACING) : SENSOR_BOX_V_SPACING*2;
   int sensorBoxesPlacedInLine = 0;
   int createdSensorIndex = 0;
   
@@ -2449,15 +2457,135 @@ void TFTIdleScreen::onActivate(TFTMenu* menuManager)
   #endif
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#ifdef USE_SMS_MODULE
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void TFTIdleScreen::drawGSMSignalQuality(TFTMenu* menuManager)
+{
+   UTFT* dc = menuManager->getDC();
+   int screenWidth = dc->getDisplayXSize();
+   int totalSegments = 4; // рисуем 4 сегмента
+   int segmentWidth = 8; // ширина сегмента
+   int signalHeight = 20; // высота сегмента
+   int segmentSpacing = 2; // пробелы между сегментами
+
+   bool fillSegment1 = false;
+   bool fillSegment2 = false;
+   bool fillSegment3 = false;
+   bool fillSegment4 = false;
+
+   switch(gsmSignalQuality)
+    {
+      case 1: 
+        fillSegment1 = true; // 25%
+      break;
+
+      case 2: 
+        fillSegment1 = true; // 50%
+        fillSegment2 = true;
+      break;
+
+      case 3: 
+        fillSegment1 = true; // 75%
+        fillSegment2 = true;
+        fillSegment3 = true;
+      break;
+
+      case 4:
+        fillSegment1 = true; // 100%
+        fillSegment2 = true;
+        fillSegment3 = true;
+        fillSegment4 = true;
+      break;
+      
+      case 0:
+      default:
+        // нет сигнала
+      break;
+     
+    } // switch
+
+    int curLeft = screenWidth - (totalSegments*segmentWidth) - (totalSegments-1)*segmentSpacing - 16;
+
+    dc->setColor(INFO_BOX_CAPTION_COLOR);
+
+    // рисуем первый сегмент
+    int initialTop = 10;
+
+
+    int curHeight = signalHeight/4;
+    int curTop = initialTop + (signalHeight - curHeight);
+
+    if(fillSegment1)
+    {
+      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+    }
+    else
+    {
+      dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+    }
+
+    // рисуем второй сегмент
+    curLeft += segmentWidth + segmentSpacing;
+    curHeight = (signalHeight/4)*2;
+    curTop = initialTop + (signalHeight - curHeight);
+
+    if(fillSegment2)
+    {
+      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+    }
+    else
+    {
+      dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+    }    
+
+    
+    // рисуем третий сегмент
+    curLeft += segmentWidth + segmentSpacing;
+    curHeight = (signalHeight/4)*3;
+    curTop = initialTop + (signalHeight - curHeight);
+
+    if(fillSegment3)
+    {
+      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+    }
+    else
+    {
+      dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+    }    
+
+    // рисуем четвертый сегмент
+    curLeft += segmentWidth + segmentSpacing;
+    curHeight = signalHeight;
+    curTop = initialTop;
+
+    if(fillSegment4)
+    {
+      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+    }
+    else
+    {
+      dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+    }    
+ 
+}
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#endif // USE_SMS_MODULE
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void TFTIdleScreen::update(TFTMenu* menuManager,uint16_t dt)
 {
 
-  #ifdef USE_DS3231_REALTIME_CLOCK
-  //if(dt == 0)
-   // lastMinute = -1;
-    
+  #ifdef USE_DS3231_REALTIME_CLOCK    
     DrawDateTime(menuManager);
   #endif
+
+  #ifdef USE_SMS_MODULE
+    uint8_t q = SIM800.getSignalQuality();
+    if(gsmSignalQuality != q)
+    {
+      gsmSignalQuality = q;
+      drawGSMSignalQuality(menuManager);
+    }
+  #endif  
 
   // Смотрим, какая кнопка нажата
   int pressed_button = screenButtons->checkButtons(BuzzerOn);
@@ -2570,6 +2698,10 @@ void TFTIdleScreen::draw(TFTMenu* menuManager)
 
   }
 
+  #endif
+
+  #ifdef USE_SMS_MODULE
+    drawGSMSignalQuality(menuManager);
   #endif
 
   

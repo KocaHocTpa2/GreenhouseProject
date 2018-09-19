@@ -3329,7 +3329,8 @@ CoreSIM800Transport::CoreSIM800Transport() : CoreTransport(SIM800_MAX_CLIENTS)
   recursionGuard = 0;
   flags.waitCipstartConnect = false;
   cipstartConnectClient = NULL;
-  workStream = NULL;  
+  workStream = NULL;
+  signalQuality = 0;  
 
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
@@ -3652,9 +3653,7 @@ void CoreSIM800Transport::sendCommand(SIM800Commands command)
       #ifdef GSM_DEBUG_MODE
       DEBUG_LOGLN(F("SIM800: Check if modem available..."));
       #endif
-      sendCommand(F("AT"));
-      //sendCommand(F("AT+CIPPING=\"google.com\",2,32,2,64"));
-      //sendCommand(F("AT+CGATT?"));
+      sendCommand(F("AT+CSQ"));
     }
     break;
 
@@ -5128,7 +5127,55 @@ void CoreSIM800Transport::update()
                   break; // smaWaitReg
                   
                   case smaCheckModemHang:
-                  {                    
+                  {
+                    if(thisCommandLine.startsWith(F("+CSQ: ")))
+                    {
+                      signalQuality = 0; // нет сигнала
+                      
+                      // получили уровень сигнала
+                      thisCommandLine.remove(0,6);
+                      int commaIdx = thisCommandLine.indexOf(',');
+                      if(commaIdx != -1)
+                      {
+                        thisCommandLine.remove(commaIdx);
+                        int quality = thisCommandLine.toInt();
+
+                        #ifdef GSM_DEBUG_MODE
+                          DEBUG_LOG(F("GSM signal quality, raw: "));
+                          DEBUG_LOGLN(String(quality));
+                        #endif
+
+                        if(quality != 99)
+                        {
+                          // если есть сигнал, пересчитываем в dBm
+                          int dBm = -115 + quality*2;
+
+                          #ifdef GSM_DEBUG_MODE
+                            DEBUG_LOG(F("GSM signal dBm: "));
+                            DEBUG_LOGLN(String(dBm));
+                          #endif
+
+                          // теперь пересчитываем в значение 0-4, что соответствует:
+                          // 0 - нет сигнала
+                          // 5 - отличный сигнал
+                          if(dBm >= -73)
+                            signalQuality = 4;
+                          else if(dBm >= -83)
+                            signalQuality = 3;
+                          else if(dBm >= -93)
+                            signalQuality = 2;
+                          else
+                            signalQuality = 1;
+
+                          #ifdef GSM_DEBUG_MODE
+                            DEBUG_LOG(F("GSM signal quality, computed: "));
+                            DEBUG_LOGLN(String(signalQuality));
+                          #endif                            
+                            
+                        }
+                      }
+                    }
+                    
                     if(isKnownAnswer(thisCommandLine,knownAnswer))
                     {
                       #ifdef GSM_DEBUG_MODE

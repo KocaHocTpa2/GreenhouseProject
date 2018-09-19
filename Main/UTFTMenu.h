@@ -130,6 +130,11 @@ class TFTIdleScreen : public AbstractTFTScreen
 
 private:
 
+  #ifdef USE_SMS_MODULE
+    uint8_t gsmSignalQuality;
+    void drawGSMSignalQuality(TFTMenu* menuManager);
+  #endif
+
   #ifdef USE_DS3231_REALTIME_CLOCK
   int lastMinute;
   void DrawDateTime(TFTMenu* menuManager);
