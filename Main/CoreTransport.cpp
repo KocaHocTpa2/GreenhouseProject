@@ -304,6 +304,7 @@ CoreESPTransport ESP;
 CoreESPTransport::CoreESPTransport() : CoreTransport(ESP_MAX_CLIENTS)
 {
   recursionGuard = 0;
+  signalQuality = 0;
   flags.waitCipstartConnect = false;
   cipstartConnectClient = NULL;
   workStream = NULL;
@@ -656,6 +657,16 @@ void CoreESPTransport::sendCommand(ESPCommands command)
       
       flags.wantReconnect = false;
       sendCommand(F("AT+CWJAP?")); // проверяем, подконнекчены ли к роутеру
+    }
+    break;
+
+    case cmdCheckCSQ:
+    {
+    #ifdef WIFI_DEBUG
+        DEBUG_LOGLN(F("ESP: check ESP RSSI..."));
+     #endif
+      
+      sendCommand(F("AT+CSQ")); // получаем уровень сигнала     
     }
     break;
     
@@ -1236,18 +1247,29 @@ void CoreESPTransport::update()
               {
                 timer = millis(); // обновляем таймер в режиме ожидания, поскольку мы не ждём ответа на команды
 
-                // у нас прошла инициализация, нет клиентов в очереди на обработку, следовательно - мы можем проверять модем на зависание
-                // тут смотрим - не пора ли послать команду для проверки на зависание. Слишком часто её звать нельзя, что очевидно,
-                // поэтому мы будем звать её минимум раз в N секунд. При этом следует учитывать, что мы всё равно должны звать эту команду
-                // вне зависимости от того, откликается ли ESP или нет, т.к. в этой команде мы проверяем - есть ли соединение с роутером.
-                // эту проверку надо делать периодически, чтобы форсировать переподсоединение, если роутер отвалился.
-                static uint32_t hangTimer = 0;
-                if(millis() - hangTimer > WIFI_AVAILABLE_CHECK_TIME)
+                static uint32_t csqTimer = 0;
+                if(millis() - csqTimer > 20000)
                 {
-                  hangTimer = millis();
-                  sendCommand(cmdCheckModemHang);
+                  csqTimer = millis();
+                  sendCommand(cmdCheckCSQ);
+                }
+                else
+                {
+
+                  // у нас прошла инициализация, нет клиентов в очереди на обработку, следовательно - мы можем проверять модем на зависание
+                  // тут смотрим - не пора ли послать команду для проверки на зависание. Слишком часто её звать нельзя, что очевидно,
+                  // поэтому мы будем звать её минимум раз в N секунд. При этом следует учитывать, что мы всё равно должны звать эту команду
+                  // вне зависимости от того, откликается ли ESP или нет, т.к. в этой команде мы проверяем - есть ли соединение с роутером.
+                  // эту проверку надо делать периодически, чтобы форсировать переподсоединение, если роутер отвалился.
+                  static uint32_t hangTimer = 0;
+                  if(millis() - hangTimer > WIFI_AVAILABLE_CHECK_TIME)
+                  {
+                    hangTimer = millis();
+                    sendCommand(cmdCheckModemHang);
+                    
+                  } // if
                   
-                } // if
+                } // else
                 
               } // else
             } // else inited
@@ -1617,6 +1639,58 @@ void CoreESPTransport::update()
                   }
                   break; // cmdCIPSERVER
 
+                  case cmdCheckCSQ:
+                  {
+                    if(thisCommandLine.startsWith(F("+CSQ: ")))
+                    {
+                      signalQuality = 0; // нет сигнала
+                      
+                      // получили уровень сигнала
+                      thisCommandLine.remove(0,6);
+                      int dBm = thisCommandLine.toInt();
+
+                        #ifdef WIFI_DEBUG
+                          DEBUG_LOG(F("ESP signal quality, dBm: "));
+                          DEBUG_LOGLN(String(dBm));
+                        #endif
+
+                        if(dBm < 0)
+                        {
+
+                          // теперь пересчитываем в значение 0-4, что соответствует:
+                          // 0 - нет сигнала
+                          // 4 - отличный сигнал
+                          if(dBm >= -55)
+                            signalQuality = 4;
+                          else if(dBm >= -66)
+                            signalQuality = 3;
+                          else if(dBm >= -77)
+                            signalQuality = 2;
+                          else if(dBm >= -88)
+                            signalQuality = 1;
+                          else
+                            signalQuality = 0;
+
+                          #ifdef WIFI_DEBUG
+                            DEBUG_LOG(F("ESP signal quality, computed: "));
+                            DEBUG_LOGLN(String(signalQuality));
+                          #endif                            
+                            
+                        }
+                     
+                    }
+                    
+                    if(isKnownAnswer(thisCommandLine,knownAnswer))
+                    {
+                      #ifdef WIFI_DEBUG
+                              DEBUG_LOGLN(F("ESP: CSQ received."));
+                      #endif
+                      machineState = espIdle; // переходим к следующей команде
+                      
+                    } // if(isKnownAnswer                    
+                  }
+                  break; // cmdCheckCSQ
+
                   case cmdCheckModemHang:
                   {                    
                     if(isKnownAnswer(thisCommandLine,knownAnswer))
@@ -1645,6 +1719,7 @@ void CoreESPTransport::update()
 
                      if(thisCommandLine == F("No AP"))
                      {
+                        signalQuality = 0;
                         GlobalSettings* Settings = MainController->GetSettings();
                         if(Settings->GetWiFiState() & 0x01)
                         {
@@ -1804,6 +1879,8 @@ void CoreESPTransport::restart()
   flags.connectedToRouter = false;
   flags.wantReconnect = false;
   flags.onIdleTimer = false;
+
+  signalQuality = 0;
   
   timer = millis();
 
@@ -5157,7 +5234,7 @@ void CoreSIM800Transport::update()
 
                           // теперь пересчитываем в значение 0-4, что соответствует:
                           // 0 - нет сигнала
-                          // 5 - отличный сигнал
+                          // 4 - отличный сигнал
                           if(dBm >= -73)
                             signalQuality = 4;
                           else if(dBm >= -83)
@@ -5457,6 +5534,8 @@ void CoreSIM800Transport::restart()
   flags.isModuleRegistered = false;
   flags.gprsAvailable = false;
   flags.ignoreNextEmptyLine = false;
+
+  signalQuality = 0;
   
   timer = millis();
 

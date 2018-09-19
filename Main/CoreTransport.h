@@ -268,6 +268,7 @@ typedef enum
   cmdWaitSendDone, // ждём окончания отсылки данных
   cmdPING, // команда пингования
   cmdCIFSR, // команда получения MAC-адресов и IP
+  cmdCheckCSQ,
   
 } ESPCommands;
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -317,6 +318,7 @@ class CoreESPTransport : public CoreTransport
     void readFromStream();
 
     bool isConnectedToRouter() { return flags.connectedToRouter; }
+    uint8_t getSignalQuality() { return signalQuality; }
 
   protected:
 
@@ -326,6 +328,7 @@ class CoreESPTransport : public CoreTransport
 
   private:
 
+      uint8_t signalQuality;
 
       // буфер для приёма команд от ESP
       TransportReceiveBuffer receiveBuffer;

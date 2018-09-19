@@ -170,7 +170,7 @@ void EventsList::update()
 
     for(size_t i=0;i<thisMessages.size();i++)
     {
-      Serial.write(thisMessages[i].data,thisMessages[i].dataLength);
+      Serial.write((const uint8_t*) thisMessages[i].data,thisMessages[i].dataLength);
       Serial.flush();
       delete [] thisMessages[i].data;
     }
@@ -205,7 +205,7 @@ void EventsList::raise(const char* data, size_t dataLength)
 {
   if(!CriticalSection::Triggered())
   {
-    Serial.write(data,dataLength);
+    Serial.write((const uint8_t*)data,dataLength);
     Serial.flush();
     return;
   }

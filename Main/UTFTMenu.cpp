@@ -26,13 +26,6 @@
 #endif
 // End of multi-architecture block
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-#ifdef USE_WIFI_MODULE
-extern imagedatatype wifi_active[];
-extern imagedatatype wifi_inactive[];
-#endif
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 TFTMenu* tftMenuManager;
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void BuzzerOn(int btn)
@@ -1931,6 +1924,7 @@ TFTIdleScreen::TFTIdleScreen() : AbstractTFTScreen()
 
   #ifdef USE_WIFI_MODULE
     connectedToRouter = false;
+    wifiSignalQuality = 0;
   #endif   
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2636,12 +2630,14 @@ int TFTIdleScreen::drawGSMIcons(TFTMenu* menuManager, int curIconRightMargin, bo
           dc->setColor(TFT_BACK_COLOR);
           dc->setBackColor(TFT_BACK_COLOR);
           dc->fillRect(initialLeft,initialTop,initialLeft+fontWidth*4+6,initialTop+signalHeight);
+          yield();
           dc->setColor(INFO_BOX_CAPTION_COLOR);
           dc->drawRect(initialLeft,initialTop,initialLeft+fontWidth*4+6,initialTop+signalHeight);
         }
         
         menuManager->getRusPrinter()->print(strToDraw.c_str(),initialLeft+5,initialTop+5);
-    
+
+      yield();
     
     
     } // gprsChanged
@@ -2655,27 +2651,183 @@ int TFTIdleScreen::drawGSMIcons(TFTMenu* menuManager, int curIconRightMargin, bo
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_WIFI_MODULE
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-int TFTIdleScreen::drawWiFiIcons(TFTMenu* menuManager, int curIconRightMargin, bool connectChanged)
+int TFTIdleScreen::drawWiFiIcons(TFTMenu* menuManager, int curIconRightMargin, bool connectChanged, bool qualityChanged)
 {
-  int curLeft = curIconRightMargin - 30;
+   UTFT* dc = menuManager->getDC();
+   int totalSegments = 4; // рисуем 4 сегмента
+   int segmentWidth = 8; // ширина сегмента
+   int signalHeight = 20; // высота сегмента
+   int segmentSpacing = 2; // пробелы между сегментами
 
-  if(connectChanged)
-  {
-    UTFT* dc = menuManager->getDC();
-  
-    if(connectedToRouter)
-    {
-      dc->drawBitmap(curLeft,10,20,20,wifi_active);
-    }
-    else
-    {
-      dc->drawBitmap(curLeft,10,20,20,wifi_inactive);
-    }
-  
-    yield();
-  } // connectChanged
+   bool fillSegment1 = false;
+   bool fillSegment2 = false;
+   bool fillSegment3 = false;
+   bool fillSegment4 = false;
 
-  return curLeft;
+   if(qualityChanged)
+   {
+
+     switch(wifiSignalQuality)
+      {
+        case 1: 
+          fillSegment1 = true; // 25%
+        break;
+  
+        case 2: 
+          fillSegment1 = true; // 50%
+          fillSegment2 = true;
+        break;
+  
+        case 3: 
+          fillSegment1 = true; // 75%
+          fillSegment2 = true;
+          fillSegment3 = true;
+        break;
+  
+        case 4:
+          fillSegment1 = true; // 100%
+          fillSegment2 = true;
+          fillSegment3 = true;
+          fillSegment4 = true;
+        break;
+        
+        case 0:
+        default:
+          // нет сигнала
+        break;
+       
+      } // switch
+   } // qualityChanged
+
+    int initialLeft = curIconRightMargin - (totalSegments*segmentWidth) - (totalSegments-1)*segmentSpacing - 20; 
+    int initialTop = 10;
+
+    if(qualityChanged)
+    {
+        // рисуем первый сегмент
+        int curLeft = initialLeft;      
+    
+        int curHeight = signalHeight/4;
+        int curTop = initialTop + (signalHeight - curHeight);    
+    
+        if(fillSegment1)
+        {
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+          yield();           
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+        }
+    
+        yield();
+    
+        // рисуем второй сегмент
+        curLeft += segmentWidth + segmentSpacing;
+        curHeight = (signalHeight/4)*2;
+        curTop = initialTop + (signalHeight - curHeight);
+    
+        if(fillSegment2)
+        {
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+          yield();            
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+        }
+    
+        yield();
+        
+        // рисуем третий сегмент
+        curLeft += segmentWidth + segmentSpacing;
+        curHeight = (signalHeight/4)*3;
+        curTop = initialTop + (signalHeight - curHeight);
+    
+        if(fillSegment3)
+        {
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+          yield();          
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+        }
+    
+        yield();
+        
+        // рисуем четвертый сегмент
+        curLeft += segmentWidth + segmentSpacing;
+        curHeight = signalHeight;
+        curTop = initialTop;
+    
+        if(fillSegment4)
+        {
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+          yield();         
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
+        }
+    
+        yield();
+    } // qualityChanged
+
+    // теперь рисуем иконку WIFI
+    dc->setFont(SmallRusFont);
+    int fontWidth = dc->getFontXsize();
+    initialLeft -= 14;
+    initialLeft -= fontWidth*4;
+    
+    if(connectChanged)
+    {   
+        String strToDraw;
+        strToDraw = F("WIFI");
+        
+        dc->setColor(INFO_BOX_CAPTION_COLOR);
+        dc->setBackColor(TFT_BACK_COLOR);
+    
+        if(connectedToRouter)
+        {
+          dc->fillRect(initialLeft,initialTop,initialLeft+fontWidth*4+6,initialTop+signalHeight);
+          dc->setColor(SENSOR_BOX_FONT_COLOR);
+          dc->setBackColor(INFO_BOX_CAPTION_COLOR);
+        }
+        else
+        {
+          dc->setColor(TFT_BACK_COLOR);
+          dc->setBackColor(TFT_BACK_COLOR);
+          dc->fillRect(initialLeft,initialTop,initialLeft+fontWidth*4+6,initialTop+signalHeight);
+          yield();
+          dc->setColor(INFO_BOX_CAPTION_COLOR);
+          dc->drawRect(initialLeft,initialTop,initialLeft+fontWidth*4+6,initialTop+signalHeight);
+        }
+        
+        menuManager->getRusPrinter()->print(strToDraw.c_str(),initialLeft+5,initialTop+5);
+    
+      yield();
+    
+    } // connectChanged
+
+    dc->setFont(BigRusFont);
+    return initialLeft;
   
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2708,7 +2860,11 @@ void TFTIdleScreen::update(TFTMenu* menuManager,uint16_t dt)
     bool conToRouter = ESP.isConnectedToRouter();
     bool conChanges = connectedToRouter != conToRouter;
     connectedToRouter = conToRouter;
-    curIconRightMargin = drawWiFiIcons(menuManager,curIconRightMargin,conChanges);
+
+    uint8_t wifiQ = ESP.getSignalQuality();
+    bool wifiQChanges = wifiQ != wifiSignalQuality;
+    wifiSignalQuality = wifiQ;
+    curIconRightMargin = drawWiFiIcons(menuManager,curIconRightMargin,conChanges, wifiQChanges);
   #endif 
 
   // Смотрим, какая кнопка нажата
@@ -2833,7 +2989,7 @@ void TFTIdleScreen::draw(TFTMenu* menuManager)
   #endif
 
   #ifdef USE_WIFI_MODULE
-    curIconRightMargin = drawWiFiIcons(menuManager,curIconRightMargin,true);
+    curIconRightMargin = drawWiFiIcons(menuManager,curIconRightMargin,true,true);
   #endif   
 
   

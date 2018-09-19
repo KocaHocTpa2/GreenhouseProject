@@ -486,6 +486,15 @@ void getCIPAPMAC(const char* command)
         });  
 }
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
+void CSQ(const char* command)
+{
+  CRITICAL_SECTION;
+
+ echo(command, AT_OK,[](){
+          Serial << "+CSQ: " << WiFi.RSSI() << ENDLINE;        
+        });      
+}
+//----------------------------------------------------------------------------------------------------------------------------------------------------------
 void getCIFSR(const char* command)
 {
   CRITICAL_SECTION;
@@ -667,58 +676,6 @@ void CIPSENDBUF(const char* command)
 
    Cipsend.add(dataLength,linkID);
 
-   /*
-
-   Serial << '>'; // выводим приглашение
-   // читаем данные
-   size_t readed = 0;
-
-   uint8_t* data = new uint8_t[dataLength];
-   memset(data,0,dataLength);
-   
-   while(readed < dataLength)
-   {
-      if(!Serial.available())
-      {
-        delay(0);
-        continue;
-      }
-
-      uint8_t ch = Serial.read();
-      data[readed] = ch;
-      readed++;
-   } // while
-
-   String sendFail = ENDLINE;
-   sendFail = linkID;
-   sendFail += ",SEND FAIL";
-
-   // данные получили, можно их писать в клиента
-   if(!Clients[linkID].connected())
-   {
-    echo("", sendFail);
-
-    delete [] data;
-    return;    
-   }   
-
-   if(!Clients[linkID].write((const uint8_t*)data,dataLength))
-   {
-     delete [] data;
-     echo("", sendFail);
-     return;
-   }
-
-   String sendOK = ENDLINE;
-   sendOK = linkID;
-   sendOK += ",";
-   sendOK += segmentID;
-   segmentID++;
-   sendOK += ",SEND OK";
-
-   delete [] data;
-   echo("", sendOK);
-   */
 
 }
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -921,6 +878,7 @@ void setup()
   commandStream->addCommand("AT+CIPSTART",CIPSTART);
   commandStream->addCommand("AT+CIPSENDBUF",CIPSENDBUF);
   commandStream->addCommand("AT+CIPSEND",CIPSENDBUF);
+  commandStream->addCommand("AT+CSQ",CSQ);
   
   DBGLN(F("Known commands inited."));
   

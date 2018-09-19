@@ -137,8 +137,9 @@ private:
   #endif
 
   #ifdef USE_WIFI_MODULE
+    uint8_t wifiSignalQuality;
     bool connectedToRouter;
-    int drawWiFiIcons(TFTMenu* menuManager, int curIconRightMargin, bool connectChanged);
+    int drawWiFiIcons(TFTMenu* menuManager, int curIconRightMargin, bool connectChanged, bool qualityChanged);
   #endif
 
   #ifdef USE_DS3231_REALTIME_CLOCK
