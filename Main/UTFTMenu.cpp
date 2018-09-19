@@ -2504,9 +2504,7 @@ void TFTIdleScreen::drawGSMSignalQuality(TFTMenu* menuManager)
      
     } // switch
 
-    int curLeft = screenWidth - (totalSegments*segmentWidth) - (totalSegments-1)*segmentSpacing - 16;
-
-    dc->setColor(INFO_BOX_CAPTION_COLOR);
+    int curLeft = screenWidth - (totalSegments*segmentWidth) - (totalSegments-1)*segmentSpacing - 16;    
 
     // рисуем первый сегмент
     int initialTop = 10;
@@ -2517,12 +2515,19 @@ void TFTIdleScreen::drawGSMSignalQuality(TFTMenu* menuManager)
 
     if(fillSegment1)
     {
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
       dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
     }
     else
     {
+      dc->setColor(TFT_BACK_COLOR);
+      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+      yield();           
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
       dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
     }
+
+    yield();
 
     // рисуем второй сегмент
     curLeft += segmentWidth + segmentSpacing;
@@ -2531,13 +2536,19 @@ void TFTIdleScreen::drawGSMSignalQuality(TFTMenu* menuManager)
 
     if(fillSegment2)
     {
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
       dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
     }
     else
     {
+      dc->setColor(TFT_BACK_COLOR);
+      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+      yield();            
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
       dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
-    }    
+    }
 
+    yield();
     
     // рисуем третий сегмент
     curLeft += segmentWidth + segmentSpacing;
@@ -2546,13 +2557,20 @@ void TFTIdleScreen::drawGSMSignalQuality(TFTMenu* menuManager)
 
     if(fillSegment3)
     {
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
       dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
     }
     else
     {
+      dc->setColor(TFT_BACK_COLOR);
+      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+      yield();          
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
       dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
-    }    
+    }
 
+    yield();
+    
     // рисуем четвертый сегмент
     curLeft += segmentWidth + segmentSpacing;
     curHeight = signalHeight;
@@ -2560,12 +2578,19 @@ void TFTIdleScreen::drawGSMSignalQuality(TFTMenu* menuManager)
 
     if(fillSegment4)
     {
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
       dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);            
     }
     else
     {
+      dc->setColor(TFT_BACK_COLOR);
+      dc->fillRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);
+      yield();         
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
       dc->drawRect(curLeft,curTop,curLeft+segmentWidth,curTop+curHeight);      
-    }    
+    }
+
+    yield();
  
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
