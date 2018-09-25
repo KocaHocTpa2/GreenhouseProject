@@ -3844,6 +3844,33 @@ void CoreSIM800Transport::processIncomingCall(const String& line)
   {
     isKnownNumber = true;
   }
+  else
+  {
+    // тут проверяем на SD-карточке
+    if(MainController->HasSDCard())
+    {
+       SdFile f;
+       String fName;
+       fName = F("PHONES.TXT");
+       if(f.open(fName.c_str(),FILE_READ))
+       {
+         while(f.available())
+         {
+           String line;
+           FileUtils::readLine(f,line);
+           if(!line.length())
+            break;
+
+            if(line.startsWith(ring))
+            {
+              isKnownNumber = true;
+              break;
+            }
+         }
+         f.close();
+       }
+    } // if(MainController->HasSDCard())
+  } // else
 
   bool shouldHangUp = true;
   
