@@ -446,6 +446,9 @@ private:
   UTFTRus rusPrint;
 
   int currentScreenIndex;
+  
+  AbstractTFTScreen* switchTo;
+  int switchToIndex;
 
   unsigned long idleTimer;
   

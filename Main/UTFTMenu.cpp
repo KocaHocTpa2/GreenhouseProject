@@ -3001,6 +3001,8 @@ TFTMenu::TFTMenu()
 {
   currentScreenIndex = -1;
   flags.isLCDOn = true;
+  switchTo = NULL;
+  switchToIndex = -1;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 void TFTMenu::setup()
@@ -3163,6 +3165,23 @@ void TFTMenu::update(uint16_t dt)
      switchToScreen("IDLE"); // переключаемся на стартовый экран, если ещё ни разу не показали ничего     
   }
 
+  if(switchTo != NULL)
+  {
+      tftDC->fillScr(TFT_BACK_COLOR); // clear screen first      
+      yield();
+      currentScreenIndex = switchToIndex;
+      switchTo->onActivate(this);
+      switchTo->update(this,0);
+      yield();
+      switchTo->draw(this);
+      yield();
+      resetIdleTimer(); // сбрасываем таймер ничегонеделанья
+
+      switchTo = NULL;
+      switchToIndex = -1;
+    return;
+  }
+
 
   if(flags.isLCDOn)
   {
@@ -3201,6 +3220,11 @@ void TFTMenu::switchToScreen(const char* screenName)
     TFTScreenInfo* si = &(screens[i]);
     if(!strcmp(si->screenName,screenName))
     {
+      switchTo = si->screen;
+      switchToIndex = i;
+      break;
+
+      /*
       tftDC->fillScr(TFT_BACK_COLOR); // clear screen first      
       yield();
       currentScreenIndex = i;
@@ -3211,6 +3235,7 @@ void TFTMenu::switchToScreen(const char* screenName)
       yield();
       resetIdleTimer(); // сбрасываем таймер ничегонеделанья
       break;
+      */
     }
   }
 
