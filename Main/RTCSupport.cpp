@@ -635,8 +635,8 @@ void RealtimeClock::begin(uint8_t wireNumber)
   if (_use_hw)
   {
     // activate internal pullups for twi.
-    digitalWrite(SDA, 1);
-    digitalWrite(SCL, 1);
+    digitalWrite(_sda_pin, 1);
+    digitalWrite(_scl_pin, 1);
 
     // Reset the TWI
     twi->TWI_CR = TWI_CR_SWRST;
