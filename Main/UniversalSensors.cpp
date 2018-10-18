@@ -865,7 +865,7 @@ void UniRS485Gate::Update(uint16_t dt)
   
   bool controllerStateWasSentOnThisIteration = false;
 
-  #if defined(USE_FEEDBACK_MANAGER) && defined(USE_TEMP_SENSORS) && SUPPORTED_WINDOWS > 0
+  #if defined(USE_FEEDBACK_MANAGER) && defined(USE_TEMP_SENSORS) && (SUPPORTED_WINDOWS > 0)
   
     // тут работаем с модулями обратной связи
     
@@ -889,8 +889,9 @@ void UniRS485Gate::Update(uint16_t dt)
       // пора собирать информацию по обратной связи
       byte currentWindowNumber = 0; // с каким окном сейчас работаем
       bool anyFeedbackReceived = false;
+      int maxFeedbacksQueries = min(SUPPORTED_WINDOWS,16);
       
-        for(int i=0;i<16;i++) // у нас 16 адресов на шине
+        for(int i=0;i<maxFeedbacksQueries;i++) // у нас максимум 16 адресов на шине
         {
             memset(&packet,0,sizeof(RS485Packet));
             
