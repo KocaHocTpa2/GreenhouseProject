@@ -114,7 +114,7 @@ void ZeroStreamListener::PrintSensorsValues(uint8_t totalCount,ModuleStates want
     return;
 
   // буфер под сырые данные, у нас максимум 4 байта на показание с датчика
-  static uint8_t raw_data[sizeof(unsigned long)] = {0};
+  static uint8_t raw_data[sizeof(uint32_t)] = {0};
   const char* noDataByte = "FF"; // байт - нет данных с датчика
 
   // пишем количество датчиков

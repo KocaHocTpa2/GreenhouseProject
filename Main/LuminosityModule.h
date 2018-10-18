@@ -64,6 +64,7 @@ class BH1750Support
     long GetCurrentLuminosity();
 };
 //--------------------------------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   uint8_t workMode : 6;
@@ -71,6 +72,7 @@ typedef struct
   bool bLastRelaysIsOn : 1; // флаг последнего состояния досветки
   
 } LuminosityModuleFlags;
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------------------------------------------
 class LuminosityModule : public AbstractModule // модуль управления освещенностью
 {

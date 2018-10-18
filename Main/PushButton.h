@@ -11,6 +11,7 @@
 class PushButton;
 typedef void (*PushButtonEvent)(const PushButton& Sender, void* UserData);
 //--------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   bool  lastBounce : 1;
@@ -29,6 +30,7 @@ typedef struct
 
   
 } PushButtonState;
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------
 
 class PushButton

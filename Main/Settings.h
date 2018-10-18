@@ -33,12 +33,14 @@ typedef void (*DeltaReadWriteFunction)(uint8_t& sensorType, String& moduleName1,
 // и OnDeltaSetCount - чтобы сообщить подписчику - сколько записей он передаст в вызове OnDeltaRead.
 typedef void (*DeltaCountFunction)(uint8_t& count);
 
+#pragma pack(push,1)
 typedef struct
 {
   byte ThingSpeakEnabled : 1;
   byte pad : 7;
   
 } IoTSettingsFlags;
+#pragma pack(pop)
 
 typedef struct
 {

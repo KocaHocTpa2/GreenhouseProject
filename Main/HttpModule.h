@@ -6,6 +6,7 @@
 #include "HTTPInterfaces.h" // подключаем интерфейсы для работы с HTTP-запросами
 #include "TinyVector.h"
 //--------------------------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 struct HttpModuleFlags
 {
   bool inProcessQuery: 1;
@@ -14,6 +15,7 @@ struct HttpModuleFlags
   bool isFirstUpdateCall: 1;
   byte currentProviderNumber: 3;
 };
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------------------------------------
 enum
 {

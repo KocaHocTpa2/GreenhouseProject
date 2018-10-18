@@ -3,12 +3,14 @@
 //----------------------------------------------------------------------------------------------------------------
 #define UNUSED(expr) do { (void)(expr); } while (0)
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   byte Pin; // номер пина
   byte State; // состояние
   
 } SlotSettings;
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
 //Структура передаваемая мастеру и обратно
 //----------------------------------------------------------------------------------------------------------------
@@ -23,6 +25,7 @@ typedef enum
   
 } UniSlotType; // тип слота, для которого указаны настройки
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 struct UniSlotData
 {
   byte slotType; // тип слота, одно из значений UniSlotType 
@@ -30,15 +33,18 @@ struct UniSlotData
   byte slotStatus; // статус слота (ВКЛ или ВЫКЛ)
     
 };
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
-  unsigned long WindowsState; // состояние каналов окон, 4 байта = 32 бита = 16 окон)
+  uint32_t WindowsState; // состояние каналов окон, 4 байта = 32 бита = 16 окон)
   uint16_t WaterChannelsState; // состояние каналов полива, 2 байта, (16 каналов)
   byte LightChannelsState; // состояние каналов досветки, 1 байт (8 каналов)
   byte PinsState[16]; // состояние пинов, 16 байт, 128 пинов
   
 } ControllerState; // состояние контроллера
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
 enum {RS485FromMaster = 1, RS485FromSlave = 2};
 enum {RS485ControllerStatePacket = 1, RS485SensorDataPacket = 2, RS485WindowsPositionPacket = 3};
@@ -56,6 +62,7 @@ enum {RS485ControllerStatePacket = 1, RS485SensorDataPacket = 2, RS485WindowsPos
  
  */
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   byte moduleNumber; // номер модуля, от 1 до 4-х
@@ -64,14 +71,18 @@ typedef struct
   byte reserved; // добитие до 23 байт
   
 } WindowFeedbackPacket;
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   byte mcpNumber;
   byte mcpChannel;
   
 } InclinometerSettings;
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   byte mcpNumber;
@@ -79,7 +90,9 @@ typedef struct
   byte closeSwitchChannel;
     
 } FeedbackEndstop;
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   byte hasPosition;
@@ -88,7 +101,9 @@ typedef struct
   byte isOpenSwitchTriggered;
   
 }WindowStatus;
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   byte header1;
@@ -106,6 +121,7 @@ typedef struct
   byte crc8;
   
 } RS485Packet; // пакет, гоняющийся по RS-485 туда/сюда (30 байт)
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
 typedef enum
 {
@@ -115,6 +131,7 @@ typedef enum
   
 } UniClientType; // тип клиента
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   byte controller_id; // ID контроллера, который выплюнул в эфир пакет
@@ -123,7 +140,9 @@ typedef struct
   byte crc8; // контрольная сумма
   
 } NRFControllerStatePacket; // пакет с состоянием контроллера
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
     byte packet_type;
@@ -137,5 +156,6 @@ typedef struct
     byte crc8;
     
 } t_scratchpad; // 30 байт
+#pragma pack(pop)
 //----------------------------------------------------------------------------------------------------------------
 #endif

@@ -332,6 +332,7 @@ class LCDMenu; // forward declaration
     
  };
 //--------------------------------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
     bool linkedToSD: 1; // флаг, что мы читаем привязки с SD-карты
@@ -339,6 +340,7 @@ typedef struct
     int8_t currentSensorsDirectory : 6;
   
 } IdlePageMenuItemFlags;
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------------------------------------------
 class IdlePageMenuItem : public AbstractLCDMenuItem // класс экрана ожидания
 {
@@ -376,6 +378,7 @@ class IdlePageMenuItem : public AbstractLCDMenuItem // класс экрана �
 };
 #ifdef USE_TEMP_SENSORS
 //--------------------------------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
     bool isWindowsOpen : 1;
@@ -383,6 +386,7 @@ typedef struct
     byte pad : 6;
   
 } WindowMenuItemFlags;
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------------------------------------------
 class WindowMenuItem : public AbstractLCDMenuItem // класс меню управления окнами
 {
@@ -401,12 +405,14 @@ class WindowMenuItem : public AbstractLCDMenuItem // класс меню упр�
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_SCENE_MODULE
 //--------------------------------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
     bool inited : 1;
     byte pad : 7;
   
 } SceneMenuItemFlags;
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------------------------------------------
 class SceneMenuItem : public AbstractLCDMenuItem // класс меню управления сценариями
 {
@@ -429,6 +435,7 @@ class SceneMenuItem : public AbstractLCDMenuItem // класс меню упра
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_WATERING_MODULE
 
+#pragma pack(push,1)
 typedef struct
 {
     bool isWateringOn : 1;
@@ -436,6 +443,7 @@ typedef struct
     byte pad : 6;
       
 } WateringMenuItemFlags;
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------------------------------------------
 class WateringMenuItem : public AbstractLCDMenuItem // класс меню управления поливом
 {
@@ -489,6 +497,7 @@ class WindowsChannelsMenuItem : public AbstractLCDMenuItem // класс мен�
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_LUMINOSITY_MODULE
 
+#pragma pack(push,1)
 typedef struct
 {
   bool isLightOn : 1;
@@ -496,6 +505,7 @@ typedef struct
   byte pad : 6; 
   
 } LuminosityMenuItemFlags;
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------------------------------------------
 class LuminosityMenuItem : public AbstractLCDMenuItem // класс меню управления досветкой
 {
@@ -533,6 +543,7 @@ class SettingsMenuItem : public AbstractLCDMenuItem // класс меню уп�
 //--------------------------------------------------------------------------------------------------------------------------------------
  typedef Vector<AbstractLCDMenuItem*> MenuItems;
 //--------------------------------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
  typedef struct
  {
     bool backlightIsOn : 1;
@@ -541,6 +552,7 @@ class SettingsMenuItem : public AbstractLCDMenuItem // класс меню уп�
     byte pad : 5;
     
  } LCDMenuFlags;
+#pragma pack(pop) 
 //-------------------------------------------------------------------------------------------------------------------------------------- 
 class LCDMenu : public DrawContext
 {

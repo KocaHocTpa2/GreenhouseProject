@@ -1517,8 +1517,8 @@ void UniRS485Gate::Update(uint16_t dt)
                       case uniLuminosity:
                       {
                         // освещённость
-                        long lum;
-                        memcpy(&lum,readDataPtr,sizeof(long));
+                        int32_t lum;
+                        memcpy(&lum,readDataPtr,sizeof(int32_t));
 
                         #ifdef RS485_DEBUG
                           DEBUG_LOG(F("Luminosity: "));
