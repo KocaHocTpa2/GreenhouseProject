@@ -14,6 +14,7 @@ enum WateringOption // какая опция управления поливом
   wateringSeparateChannels = 2 // раздельное управление каналами по дням недели  
 };
 
+#pragma pack(push,1)
 typedef struct
 {
   uint8_t wateringWeekDays; // в какие дни недели управляем поливом на этом канале?
@@ -23,6 +24,7 @@ typedef struct
   uint8_t stopBorder; // показания датчика, по достижению которых канал полива выключается
   
 } WateringChannelOptions; // настройки для отдельного канала полива
+#pragma pack(pop)
 
 // функция, которая вызывается при чтении/записи установок дельт - чтобы не хранить их в классе настроек.
 // При чтении настроек класс настроек вызывает функцию OnDeltaRead, передавая прочитанные значения вовне.
@@ -42,6 +44,7 @@ typedef struct
 } IoTSettingsFlags;
 #pragma pack(pop)
 
+#pragma pack(push,1)
 typedef struct
 {
   byte ModuleID;
@@ -49,17 +52,20 @@ typedef struct
   byte SensorIndex;
   
 } IoTSensorSettings;
+#pragma pack(pop)
 
+#pragma pack(push,1)
 typedef struct
 {
   byte Header1;
   byte Header2;
   IoTSettingsFlags Flags; // флаги
-  unsigned long UpdateInterval; // интервал обновления, мс
+  uint32_t UpdateInterval; // интервал обновления, мс
   char ThingSpeakChannelID[20]; // ID канала ThingSpeak
   IoTSensorSettings Sensors[8]; // датчики для отсыла
   
 } IoTSettings;
+#pragma pack(pop)
 
 enum
 {
