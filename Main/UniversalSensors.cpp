@@ -44,6 +44,7 @@ void UniRS485Gate::enableSend()
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
 void UniRS485Gate::enableReceive()
 {
+  // освобождаем буфер перед приёмом, чтобы точно не было никакого мусора
   while(RS_485_SERIAL.available())
     RS_485_SERIAL.read();
     
@@ -88,6 +89,7 @@ void UniRS485Gate::Setup()
   }
   #endif
 
+  // на всякий случай освобождаем буфер от возможного мусора
   while(RS_485_SERIAL.available())
     RS_485_SERIAL.read();
   
@@ -462,7 +464,8 @@ void UniRS485Gate::sendControllerStatePacket()
     // теперь ждём завершения передачи
     waitTransmitComplete();
 
-     enableReceive();
+/// Этой строчки не надо, поскольку на этот пакет мы не ждём ответа
+ ///    enableReceive();
 
 
     #ifdef USE_REMOTE_DISPLAY_MODULE
@@ -538,7 +541,8 @@ void UniRS485Gate::sendRemoteDisplaySettings()
     enableSend();
     writeToStream(&RS_485_SERIAL,(const uint8_t *)&packet,sizeof(RS485Packet));
     waitTransmitComplete();
-    enableReceive();  
+/// Этой строчки не надо, поскольку на этот пакет мы не ждём ответа
+///    enableReceive();  
 
 }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -845,7 +849,8 @@ void UniRS485Gate::Update(uint16_t dt)
     // теперь ждём завершения передачи
     waitTransmitComplete();
 
-     enableReceive();    
+/// Этой строчки не надо, поскольку на этот пакет мы не ждём ответа
+///     enableReceive();    
 
    //    Serial.println("packet was sent.");
 
