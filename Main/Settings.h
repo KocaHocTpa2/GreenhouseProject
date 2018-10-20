@@ -104,6 +104,7 @@ class GlobalSettings
 
     byte GetGSMProvider();
     bool SetGSMProvider(byte p);
+    String GetGSMProviderName();
       
     uint8_t GetControllerID();
     void SetControllerID(uint8_t val);

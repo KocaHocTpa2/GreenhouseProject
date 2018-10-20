@@ -512,6 +512,27 @@ uint8_t GlobalSettings::GetWateringOption()
   return read8(WATERING_OPTION_EEPROM_ADDR, wateringOFF);
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+String GlobalSettings::GetGSMProviderName()
+{
+  byte prov = GetGSMProvider();
+
+  switch(prov)
+  {
+    case MTS: return PROV_NAME_MTS;
+    case Beeline: return PROV_NAME_BEELINE;
+    case Megafon: return PROV_NAME_MEGAFON;
+    case Tele2: return PROV_NAME_TELE2;
+    case Yota: return PROV_NAME_YOTA;
+    case MTS_Bel: return PROV_NAME_MTS_BEL;
+    case Velcom_Bel: return PROV_NAME_VELCOM_BEL;
+    case Privet_Bel: return PROV_NAME_PRIVET_BEL;
+    case Life_Bel: return PROV_NAME_LIFE_BEL;
+    
+  } // switch
+
+  return "";
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
 byte GlobalSettings::GetGSMProvider()
 {
   return read8(GSM_PROVIDER_EEPROM_ADDR,MTS); 

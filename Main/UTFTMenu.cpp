@@ -1921,6 +1921,8 @@ TFTIdleScreen::TFTIdleScreen() : AbstractTFTScreen()
   #ifdef USE_SMS_MODULE
     gsmSignalQuality = 0; // нет сигнала
     gprsAvailable = false;
+    providerNamePrinted = false;
+    providerNameLength = 0;
   #endif
 
   #ifdef USE_WIFI_MODULE
@@ -2466,6 +2468,11 @@ void TFTIdleScreen::onActivate(TFTMenu* menuManager)
   #ifdef USE_DS3231_REALTIME_CLOCK
   lastMinute = -1;
   #endif
+
+  #ifdef USE_SMS_MODULE
+    providerNamePrinted = false;
+    providerNameLength = 0;
+  #endif
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_SMS_MODULE
@@ -2609,6 +2616,8 @@ int TFTIdleScreen::drawGSMIcons(TFTMenu* menuManager, int curIconRightMargin, bo
         yield();
     } // qualityChanged
 
+    
+
     // теперь рисуем иконку GPRS
     dc->setFont(SmallRusFont);
     int fontWidth = dc->getFontXsize();
@@ -2646,6 +2655,24 @@ int TFTIdleScreen::drawGSMIcons(TFTMenu* menuManager, int curIconRightMargin, bo
     
     } // gprsChanged
 
+    initialLeft -= 8;
+
+    if(!providerNamePrinted)
+    {
+      providerNamePrinted = true;
+      String gsmProv = MainController->GetSettings()->GetGSMProviderName();
+      providerNameLength = menuManager->getRusPrinter()->print(gsmProv.c_str(),0,0,0,true);
+      int lft = initialLeft - fontWidth*providerNameLength;
+
+      dc->setBackColor(TFT_BACK_COLOR);
+      dc->setColor(INFO_BOX_CAPTION_COLOR);
+      
+      menuManager->getRusPrinter()->print(gsmProv.c_str(),lft+5,initialTop+5);
+
+    }
+
+    initialLeft -= fontWidth*providerNameLength;
+    
     dc->setFont(BigRusFont);
     return initialLeft;
  

@@ -142,6 +142,8 @@ private:
   #ifdef USE_SMS_MODULE
     uint8_t gsmSignalQuality;
     bool gprsAvailable;
+    bool providerNamePrinted;
+    int providerNameLength;
     int drawGSMIcons(TFTMenu* menuManager, int curIconRightMargin, bool qualityChanged, bool gprsChanged);
   #endif
 

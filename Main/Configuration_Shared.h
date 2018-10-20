@@ -168,6 +168,18 @@
 #define LIFE_BEL_USER F("")
 #define LIFE_BEL_PASS F("")
 
+// имена провайдеров
+#define PROV_NAME_MTS F("МТС")
+#define PROV_NAME_BEELINE F("БИЛАЙН")
+#define PROV_NAME_MEGAFON F("МЕГАФОН")
+#define PROV_NAME_TELE2 F("ТЕЛЕ2")
+#define PROV_NAME_YOTA F("ЙОТА")
+#define PROV_NAME_MTS_BEL F("МТС БЕЛ")
+#define PROV_NAME_VELCOM_BEL F("ВЕЛКОМ БЕЛ")
+#define PROV_NAME_PRIVET_BEL F("ПРИВЕТ БЕЛ")
+#define PROV_NAME_LIFE_BEL F("ЛАЙФ БЕЛ")
+
+
 //--------------------------------------------------------------------------------------------------------------------------------
 // настройки IoT (актуально при раскомментированной команде USE_IOT_MODULE)
 //--------------------------------------------------------------------------------------------------------------------------------
