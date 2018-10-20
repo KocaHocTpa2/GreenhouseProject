@@ -131,12 +131,17 @@ char RealtimeClock::workBuff[12] = {0};
 //--------------------------------------------------------------------------------------------------------------------------------------
 RealtimeClock::RealtimeClock()
 {
+/*
 #if TARGET_BOARD == DUE_BOARD
-#else  
+#else
+*/  
     wireInterface = &Wire;
+/*    
 #endif   
+*/
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+/*
 #if TARGET_BOARD == DUE_BOARD
 //--------------------------------------------------------------------------------------------------------------------------------------
 // DUE board
@@ -350,6 +355,7 @@ uint8_t RealtimeClock::_encode(uint8_t value)
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 #else // NOT DUE BOARD
+*/
 //--------------------------------------------------------------------------------------------------------------------------------------
 uint8_t RealtimeClock::dec2bcd(uint8_t val)
 {
@@ -361,7 +367,9 @@ uint8_t RealtimeClock::bcd2dec(uint8_t val)
   return( (val/16*10) + (val%16) );
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+/*
 #endif // NOT DUE BOARD
+*/
 //--------------------------------------------------------------------------------------------------------------------------------------
 void RealtimeClock::setTime(const RTCTime& time)
 {
@@ -370,7 +378,7 @@ void RealtimeClock::setTime(const RTCTime& time)
 //--------------------------------------------------------------------------------------------------------------------------------------
 void RealtimeClock::setTime(uint8_t second, uint8_t minute, uint8_t hour, uint8_t dayOfWeek, uint8_t dayOfMonth, uint8_t month, uint16_t year)
 {
-
+/*
 #if TARGET_BOARD == DUE_BOARD
 
   if ( (hour < 24) && (minute < 60) && (second < 60) && ((dayOfMonth > 0) && (dayOfMonth <= 31)) && ((month > 0) && (month <= 12)) && ((year >= 2000) && (year < 3000)))
@@ -387,7 +395,7 @@ void RealtimeClock::setTime(uint8_t second, uint8_t minute, uint8_t hour, uint8_
 
 
 #else
-
+*/
   while(year > 100) // приводим к диапазону 0-99
     year -= 100;
  
@@ -405,13 +413,14 @@ void RealtimeClock::setTime(uint8_t second, uint8_t minute, uint8_t hour, uint8_
   wireInterface->endTransmission();  
 
   delay(10); // немного подождём для надёжности
-  
+/*
 #endif
+*/
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 Temperature RealtimeClock::getTemperature()
 {
-
+/*
 #if TARGET_BOARD == DUE_BOARD
 
     Temperature res;
@@ -434,7 +443,7 @@ Temperature RealtimeClock::getTemperature()
       return res;
 
 #else
-  
+*/  
      Temperature res;
       
      union int16_byte {
@@ -460,8 +469,9 @@ Temperature RealtimeClock::getTemperature()
       }
       
       return res;
-  
+  /*
   #endif
+  */
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 RTCTime RealtimeClock::getTime()
@@ -471,7 +481,7 @@ RTCTime RealtimeClock::getTime()
   
   if(!lastRequestTime)
     memset(&t,0,sizeof(t));
-  
+  /*
   #if TARGET_BOARD == DUE_BOARD
 
       if(!lastRequestTime || ( (millis() - lastRequestTime) > 999) )
@@ -491,7 +501,7 @@ RTCTime RealtimeClock::getTime()
       return t;
   
   #else
-  
+  */
     // NOT Due board
 
      if(!lastRequestTime || ( (millis() - lastRequestTime) > 999) )
@@ -518,7 +528,9 @@ RTCTime RealtimeClock::getTime()
      }
       
       return t;
+  /*
   #endif
+  */
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 const char* RealtimeClock::getDayOfWeekStr(const RTCTime& t)
@@ -594,6 +606,12 @@ void RealtimeClock::begin(uint8_t wireNumber)
 {
 #if TARGET_BOARD == DUE_BOARD
 
+  if(wireNumber == 1)
+    wireInterface = &Wire1;
+  else
+    wireInterface = &Wire;
+
+/*
   if (wireNumber == 1)
   {
     _sda_pin = SDA1;// , SCLdata_pin;
@@ -652,7 +670,7 @@ void RealtimeClock::begin(uint8_t wireNumber)
   {
     pinMode(_scl_pin, OUTPUT);
   }
-
+*/  
 #elif TARGET_BOARD == MEGA_BOARD
 
         wireInterface = &Wire;
