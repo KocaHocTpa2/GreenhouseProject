@@ -579,6 +579,21 @@ bool  ZeroStreamListener::ExecCommand(const Command& command, bool wantAnswer)
           PublishSingleton.Flags.Status = true;
         
         } // AUTO
+        else
+        if(t == F("RSTUNI"))
+        {
+            uint16_t addr = UNI_SENSOR_INDICIES_EEPROM_ADDR;  
+            MemWrite(addr++,0);
+            MemWrite(addr++,0);
+            MemWrite(addr++,0);
+            MemWrite(addr++,0);
+            addr++;
+            MemWrite(addr++,0);
+
+          // говорим, что выполнили
+          PublishSingleton = REG_SUCC;
+          PublishSingleton.Flags.Status = true;
+        } // RSTUNI
                 
       } // if
       else

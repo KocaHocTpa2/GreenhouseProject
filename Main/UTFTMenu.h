@@ -118,6 +118,13 @@ typedef struct
 } IdleScreenFlags;
 #pragma pack(pop)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+typedef struct
+{
+  TFTInfoBox* box;
+  uint8_t index;
+  
+} TFTInfoBoxWithIndex;
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 class TFTIdleScreen : public AbstractTFTScreen
 {
   public:
@@ -152,7 +159,7 @@ private:
   UTFT_Buttons_Rus* screenButtons;
   IdleScreenFlags flags;
 
-  TFTInfoBox* sensors[TFT_SENSOR_BOXES_COUNT];
+  TFTInfoBoxWithIndex sensors[TFT_SENSOR_BOXES_COUNT];
   uint16_t sensorsTimer;
 
   void updateStatuses(TFTMenu* menuManager);

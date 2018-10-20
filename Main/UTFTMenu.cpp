@@ -1542,6 +1542,7 @@ void TFTSensorsScreen::initSensors()
     if(light)
     {
       size_t tempCount = light->State.GetStateCount(StateLuminosity);
+
       for(size_t i=0;i<tempCount;i++)
       {
         TFTSensorData dt;
@@ -1565,7 +1566,7 @@ void TFTSensorsScreen::initSensors()
         sensors.push_back(dt);
       }
     }  
-  #endif // USE_SOIL_MOISTURE_MODULE     
+  #endif // USE_SOIL_MOISTURE_MODULE
   
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1947,7 +1948,7 @@ TFTIdleScreen::~TFTIdleScreen()
   #if TFT_SENSOR_BOXES_COUNT > 0
   for(int i=0;i<TFT_SENSOR_BOXES_COUNT;i++)
   {
-    delete sensors[i];
+    delete sensors[i].box;
   }
 #endif  
 }
@@ -1987,14 +1988,15 @@ void TFTIdleScreen::DrawDateTime(TFTMenu* menuManager)
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #endif // USE_DS3231_REALTIME_CLOCK
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void TFTIdleScreen::drawSensorData(TFTMenu* menuManager,TFTInfoBox* box, int sensorIndex, bool forceDraw)
+void TFTIdleScreen::drawSensorData(TFTMenu* menuManager,TFTInfoBox* box, int settingsIndex, bool forceDraw)
 {
-
+  
   if(!box) // нет переданного бокса для отрисовки
     return;
 
-  TFTSensorInfo* sensorInfo = &(TFTSensors[sensorIndex]);
+  TFTSensorInfo* sensorInfo = &(TFTSensors[settingsIndex]);
   ModuleStates sensorType = (ModuleStates) sensorInfo->sensorType;
+
 
   //Тут получение OneState для датчика, и выход, если не получили
   AbstractModule* module = MainController->GetModuleByID(sensorInfo->moduleName);
@@ -2385,7 +2387,7 @@ void TFTIdleScreen::setup(TFTMenu* menuManager)
 
    for(int i=0;i<TFT_SENSOR_BOXES_COUNT;i++)
    {
-    sensors[i] = NULL;
+    sensors[i].box = NULL;
    }
 
   
@@ -2412,8 +2414,10 @@ void TFTIdleScreen::setup(TFTMenu* menuManager)
       curInfoBoxLeft = startLeft;
       sensorsTop += SENSOR_BOX_HEIGHT + SENSOR_BOX_V_SPACING;
     }
-      
-    sensors[createdSensorIndex] = new TFTInfoBox("",SENSOR_BOX_WIDTH,SENSOR_BOX_HEIGHT,curInfoBoxLeft,sensorsTop);
+
+
+    sensors[createdSensorIndex].box = new TFTInfoBox("",SENSOR_BOX_WIDTH,SENSOR_BOX_HEIGHT,curInfoBoxLeft,sensorsTop);
+    sensors[createdSensorIndex].index = i;
     curInfoBoxLeft += SENSOR_BOX_WIDTH + SENSOR_BOX_V_SPACING;
     sensorBoxesPlacedInLine++;
     createdSensorIndex++;
@@ -2929,7 +2933,7 @@ void TFTIdleScreen::update(TFTMenu* menuManager,uint16_t dt)
 
       for(int i=0;i<TFT_SENSOR_BOXES_COUNT;i++)
       {
-        drawSensorData(menuManager,sensors[i],i);
+        drawSensorData(menuManager,sensors[i].box,sensors[i].index);
       }
       
     }
@@ -2967,13 +2971,13 @@ void TFTIdleScreen::draw(TFTMenu* menuManager)
   //Тут отрисовка боксов с показаниями датчиков
   for(int i=0;i<TFT_SENSOR_BOXES_COUNT;i++)
   {
-    if(!sensors[i])
+    if(!sensors[i].box)
       continue;
     
-    sensors[i]->draw(menuManager);
-    TFTSensorInfo* sensorInfo = &(TFTSensors[i]);
-    sensors[i]->drawCaption(menuManager,sensorInfo->sensorLabel);
-    drawSensorData(menuManager,sensors[i],i,true); // тут перерисовываем показания по-любому
+    sensors[i].box->draw(menuManager);
+    TFTSensorInfo* sensorInfo = &(TFTSensors[ sensors[i].index ]);
+    sensors[i].box->drawCaption(menuManager,sensorInfo->sensorLabel);
+    drawSensorData(menuManager,sensors[i].box,sensors[i].index,true); // тут перерисовываем показания по-любому
     sensorsTimer = 0; // сбрасываем таймер перерисовки показаний датчиков
 
   }
