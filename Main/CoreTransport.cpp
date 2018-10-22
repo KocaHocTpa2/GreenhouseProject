@@ -311,6 +311,12 @@ CoreESPTransport::CoreESPTransport() : CoreTransport(ESP_MAX_CLIENTS)
 
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+CoreESPTransport::~CoreESPTransport()
+{
+  clearSpecialCommandResults();
+  clearClientsQueue(false);
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
 void CoreESPTransport::readFromStream()
 {
   if(!workStream)
@@ -3407,8 +3413,18 @@ CoreSIM800Transport::CoreSIM800Transport() : CoreTransport(SIM800_MAX_CLIENTS)
   flags.waitCipstartConnect = false;
   cipstartConnectClient = NULL;
   workStream = NULL;
-  signalQuality = 0;  
+  signalQuality = 0;
+  smsToSend = NULL;
 
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
+CoreSIM800Transport::~CoreSIM800Transport()
+{
+  delete smsToSend;
+  for(size_t i=0;i<cusdList.size();i++)
+    delete cusdList[i];
+
+  clearClientsQueue(false);
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 void CoreSIM800Transport::readFromStream()
