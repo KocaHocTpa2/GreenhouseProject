@@ -26,6 +26,7 @@ void HumidityModule::Setup()
      // проверяем на стробы для Si7021
      if(HUMIDITY_SENSORS_ARRAY[i].type == SI7021 && HUMIDITY_SENSORS_ARRAY[i].pin > 0)
      {
+      //Serial.println("FOUND SI7021 STROBE PIN!!!");
        // есть привязанный пин для разрыва строба - настраиваем его
        WORK_STATUS.PinMode(HUMIDITY_SENSORS_ARRAY[i].pin,OUTPUT);
      }
@@ -68,6 +69,7 @@ HumidityAnswer HumidityModule::QuerySensor(uint8_t sensorNumber, uint8_t pin, ui
 
       if(lastSi7021StrobeBreakPin && pin != lastSi7021StrobeBreakPin)
       {
+       // Serial.println("SI7021 STROBE OFF!!!");
          // предыдущему датчику был назначен пин для разрыва строба - рвём ему строб
          WORK_STATUS.PinWrite(lastSi7021StrobeBreakPin,STROBE_OFF_LEVEL);
          lastSi7021StrobeBreakPin = 0; // сбрасываем статус, т.к. мы уже разорвали этот строб
@@ -76,6 +78,7 @@ HumidityAnswer HumidityModule::QuerySensor(uint8_t sensorNumber, uint8_t pin, ui
       // тут смотрим - не назначен ли у нас пин для разрыва строба?
       if(pin)
       {
+        //Serial.println("SI7021 STROBE ON!!!");
             // нам назначена линия разрыва строба - мы должны её включить
             lastSi7021StrobeBreakPin = pin; // запоминаем, какую линию включали
             // включаем её
@@ -85,13 +88,17 @@ HumidityAnswer HumidityModule::QuerySensor(uint8_t sensorNumber, uint8_t pin, ui
       // теперь смотрим - проинициализирован ли датчик?
       if(!pin2)
       {
+        //Serial.println("SI7021 NOT INITED!!!");
          // датчик не проинициализирован
          HUMIDITY_SENSORS_ARRAY[sensorNumber].pin2 = 1; // запоминаем, что мы проинициализировали датчик
 
          // и инициализируем его
          si7021.begin();
+         
+        // Serial.println("SI7021 NOW INITED.");
       }
 
+     // Serial.println("READ FROM SI7021");
       // теперь мы можем читать с датчика - предыдущий строб, если был - разорван, текущий, если есть - включен
       return si7021.read();
     }

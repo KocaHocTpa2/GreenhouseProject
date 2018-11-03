@@ -410,7 +410,7 @@ void RealtimeClock::setTime(uint8_t second, uint8_t minute, uint8_t hour, uint8_
   wireInterface->write(dec2bcd(month)); // пишем месяц
   wireInterface->write(dec2bcd(year)); // пишем год
   
-  wireInterface->endTransmission();  
+  wireInterface->endTransmission(true);  
 
   delay(10); // немного подождём для надёжности
 /*
@@ -453,7 +453,7 @@ Temperature RealtimeClock::getTemperature()
          
       wireInterface->beginTransmission(DS3231Address);
       wireInterface->write(0x11);
-      if(wireInterface->endTransmission() != 0) // ошибка
+      if(wireInterface->endTransmission(true) != 0) // ошибка
         return res;
     
       if(wireInterface->requestFrom(DS3231Address, 2) == 2)
@@ -509,7 +509,7 @@ RTCTime RealtimeClock::getTime()
         wireInterface->beginTransmission(DS3231Address);
         wireInterface->write(0); // говорим, что мы собираемся читать с регистра 0
         
-        if(wireInterface->endTransmission() != 0) // ошибка
+        if(wireInterface->endTransmission(true) != 0) // ошибка
           return t;
         
         if(wireInterface->requestFrom(DS3231Address, 7) == 7) // читаем 7 байт, начиная с регистра 0

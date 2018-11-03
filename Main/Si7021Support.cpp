@@ -21,16 +21,17 @@ HumidityAnswer Si7021::read()
   float humidity, temperature;
   humidity = sensor.readHumidity();
   temperature = sensor.readTemperature();
-
+  
   byte humError = (byte) humidity;
   byte tempError = (byte) temperature;
-
+/*
   if(humError == HTU21D_ERROR || tempError == HTU21D_ERROR)
   {
     dt.IsOK = false;
   }
   else
   {
+*/  
      dt.IsOK = true;
      
     int iTmp = humidity*100;
@@ -58,7 +59,7 @@ HumidityAnswer Si7021::read()
       dt.TemperatureDecimal = 0;
     }
        
-  } 
+/////////////////////  } 
 
   return dt;
 }

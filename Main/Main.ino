@@ -332,7 +332,7 @@ void initI2C()
    #if TARGET_BOARD == MEGA_BOARD
    
     Wire.begin();
-    Wire.setClock(I2C_SPEED);
+ //   Wire.setClock(I2C_SPEED);
 
    #elif TARGET_BOARD == DUE_BOARD
 
@@ -340,24 +340,24 @@ void initI2C()
 
     // инициализируем стандартными методами
       Wire.begin();
-      Wire.setClock(I2C_SPEED);
+   //   Wire.setClock(I2C_SPEED);
 
       if(DS3231_WIRE_NUMBER == 1)
       {
         Wire1.begin();
-        Wire1.setClock(I2C_SPEED);
+  //      Wire1.setClock(I2C_SPEED);
       }    
    
    #elif TARGET_BOARD == STM32_BOARD
 
     // инициализация для STM32
       Wire.begin();
-      Wire.setClock(I2C_SPEED);
+  //    Wire.setClock(I2C_SPEED);
 
       if(DS3231_WIRE_NUMBER == 1)
       {
         Wire1.begin();
-        Wire1.setClock(I2C_SPEED);
+//        Wire1.setClock(I2C_SPEED);
       }
    #else
       #error "UNKNOWN TARGET BOARD!!!"

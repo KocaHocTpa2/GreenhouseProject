@@ -46,7 +46,7 @@ void BH1750Support::writeByte(uint8_t toWrite)
 {
   Wire.beginTransmission(deviceAddress);
   BH1750_WIRE_WRITE(toWrite);
-  Wire.endTransmission();
+  Wire.endTransmission(true);
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 long BH1750Support::GetCurrentLuminosity() 

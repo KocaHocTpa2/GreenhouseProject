@@ -7,6 +7,7 @@
 #include "Si7021Support.h"
 #include "DHTSupport.h"
 //--------------------------------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
 typedef struct
 {
   uint8_t pin;
@@ -14,6 +15,7 @@ typedef struct
   HumiditySensorType type;
   
 } HumiditySensorRecord;
+#pragma pack(pop)
 //--------------------------------------------------------------------------------------------------------------------------------------
 class HumidityModule : public AbstractModule // модуль управления влажностью
 {
