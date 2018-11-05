@@ -40,7 +40,7 @@ bool Adafruit_Si7021::begin(void) {
   reset();
   if (readRegister8(SI7021_READRHT_REG_CMD) != 0x3A) return false;
 
-  readSerialNumber();
+ // readSerialNumber();
 
  // Serial.println(sernum_a, HEX);
  // Serial.println(sernum_b, HEX);
