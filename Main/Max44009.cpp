@@ -22,7 +22,7 @@ void Max44009::begin(MAX44009_ADDRESS addr)
 	// пишем в него - непрерывный режим измерения, время интегрирования - 800 ms
 	Wire.write(0x40);
 	
-	Wire.endTransmission();	
+	Wire.endTransmission(true);	
      
 }
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ float Max44009::readLuminosity()
   
   // регистр данных
   Wire.write(0x03);
-  if(Wire.endTransmission() != 0)
+  if(Wire.endTransmission(true) != 0)
     return -1.0;
 
   // ждём два байта

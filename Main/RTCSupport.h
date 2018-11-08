@@ -57,9 +57,9 @@ class RealtimeClock
 //--------------------------------------------------------------------------------------------------------------------------------------
 #else
 //--------------------------------------------------------------------------------------------------------------------------------------
-enum { DS3231Address = 0x68, DS3231Address_W = 0xD0, DS3231Address_R = 0xD1}; // адрес датчика
+enum { DS3231Address = 0x68/*, DS3231Address_W = 0xD0, DS3231Address_R = 0xD1*/}; // адрес датчика
 //--------------------------------------------------------------------------------------------------------------------------------------
-
+/*
 #if TARGET_BOARD == DUE_BOARD
 
     #define TWI_SPEED    TWI_SPEED_400k  // Set default TWI Speed
@@ -85,7 +85,7 @@ enum { DS3231Address = 0x68, DS3231Address_W = 0xD0, DS3231Address_R = 0xD1}; //
     #define SEC_1970_TO_2000 946684800
       
 #endif
-
+*/
 //--------------------------------------------------------------------------------------------------------------------------------------
 class RealtimeClock
 {
@@ -109,7 +109,7 @@ public:
     void begin(uint8_t wireNumber);
 
 private:
-
+/*
 #if TARGET_BOARD == DUE_BOARD
 
   void setDOW(uint8_t dow);
@@ -137,14 +137,14 @@ private:
   Twi   *twi;
       
 #else
-
+*/
     uint8_t dec2bcd(uint8_t val);
     uint8_t bcd2dec(uint8_t val);
 
     TwoWire* wireInterface;
-  
+/*  
  #endif
-
+*/
   static char workBuff[12]; // буфер под дату/время
 
 };

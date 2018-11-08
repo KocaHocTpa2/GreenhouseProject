@@ -11,10 +11,10 @@ class BuzzerClass
     BuzzerClass();
     void begin();
     void buzz();
-    void buzzLevel(uint8_t level);
 
    private:
    
+    void buzzLevel(uint8_t level);
     static void buzzOffHandler(void* param);
   
 };

@@ -35,15 +35,15 @@ Adafruit_Si7021::Adafruit_Si7021(void) {
 }
 
 bool Adafruit_Si7021::begin(void) {
-  Wire.begin();
+ // Wire.begin();
 
   reset();
   if (readRegister8(SI7021_READRHT_REG_CMD) != 0x3A) return false;
 
-  //readSerialNumber();
+ // readSerialNumber();
 
-  //Serial.println(sernum_a, HEX);
-  //Serial.println(sernum_b, HEX);
+ // Serial.println(sernum_a, HEX);
+ // Serial.println(sernum_b, HEX);
 
   return true;
 }
@@ -54,7 +54,9 @@ float Adafruit_Si7021::readHumidity(void) {
   Wire.endTransmission(false);
   delay(25);
 
-  Wire.requestFrom(_i2caddr, 3);
+  if(Wire.requestFrom(_i2caddr, 3) != 3)
+    return -1.0;
+    
   uint16_t hum = Wire.read();
   hum <<= 8;
   hum |= Wire.read();
@@ -74,7 +76,9 @@ float Adafruit_Si7021::readTemperature(void) {
   Wire.endTransmission(false);
   delay(25);
 
-  Wire.requestFrom(_i2caddr, 3);
+  if(Wire.requestFrom(_i2caddr, 3) != 3)
+    return -200.0;
+    
   uint16_t temp = Wire.read();
   temp <<= 8;
   temp |= Wire.read();
@@ -91,7 +95,7 @@ float Adafruit_Si7021::readTemperature(void) {
 void Adafruit_Si7021::reset(void) {
   Wire.beginTransmission(_i2caddr);
   Wire.write((uint8_t)SI7021_RESET_CMD);
-  Wire.endTransmission();
+  Wire.endTransmission(true);
   delay(50);
 }
 
@@ -99,7 +103,7 @@ void Adafruit_Si7021::readSerialNumber(void) {
   Wire.beginTransmission(_i2caddr);
   Wire.write((uint8_t)(SI7021_ID1_CMD>>8));
   Wire.write((uint8_t)(SI7021_ID1_CMD&0xFF));
-  Wire.endTransmission();
+  Wire.endTransmission(true);
 
   Wire.requestFrom(_i2caddr, 8);
   sernum_a = Wire.read();
@@ -117,7 +121,7 @@ void Adafruit_Si7021::readSerialNumber(void) {
   Wire.beginTransmission(_i2caddr);
   Wire.write((uint8_t)(SI7021_ID2_CMD>>8));
   Wire.write((uint8_t)(SI7021_ID2_CMD&0xFF));
-  Wire.endTransmission();
+  Wire.endTransmission(true);
 
   Wire.requestFrom(_i2caddr, 8);
   sernum_b = Wire.read();
@@ -139,18 +143,20 @@ void Adafruit_Si7021::writeRegister8(uint8_t reg, uint8_t value) {
   Wire.beginTransmission(_i2caddr);
   Wire.write((uint8_t)reg);
   Wire.write((uint8_t)value);
-  Wire.endTransmission();
+  Wire.endTransmission(true);
 
-  //Serial.print("Wrote $"); Serial.print(reg, HEX); Serial.print(": 0x"); Serial.println(value, HEX);
+ // Serial.print("Wrote $"); Serial.print(reg, HEX); Serial.print(": 0x"); Serial.println(value, HEX);
 }
 
 uint8_t Adafruit_Si7021::readRegister8(uint8_t reg) {
-  uint8_t value;
+  uint8_t value = 0;
   Wire.beginTransmission(_i2caddr);
   Wire.write((uint8_t)reg);
   Wire.endTransmission(false);
 
-  Wire.requestFrom(_i2caddr, 1);
+  if(Wire.requestFrom(_i2caddr, 1) != 1)
+    return value;
+    
   value = Wire.read();
 
   //Serial.print("Read $"); Serial.print(reg, HEX); Serial.print(": 0x"); Serial.println(value, HEX);
@@ -158,16 +164,18 @@ uint8_t Adafruit_Si7021::readRegister8(uint8_t reg) {
 }
 
 uint16_t Adafruit_Si7021::readRegister16(uint8_t reg) {
-  uint16_t value;
+  uint16_t value = 0;
   Wire.beginTransmission(_i2caddr);
   Wire.write((uint8_t)reg);
-  Wire.endTransmission();
+  Wire.endTransmission(true);
 
-  Wire.requestFrom(_i2caddr, 2);
+  if(Wire.requestFrom(_i2caddr, 2) != 2)
+    return value;
+    
   value = Wire.read();
   value <<= 8;
   value |= Wire.read();
 
-  //Serial.print("Read $"); Serial.print(reg, HEX); Serial.print(": 0x"); Serial.println(value, HEX);
+ // Serial.print("Read $"); Serial.print(reg, HEX); Serial.print(": 0x"); Serial.println(value, HEX);
   return value;
 }
