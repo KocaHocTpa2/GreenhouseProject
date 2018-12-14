@@ -116,26 +116,8 @@ byte UniRS485Gate::crc8(const byte *addr, byte len)
 void UniRS485Gate::waitTransmitComplete()
 {
   // ждём завершения передачи по UART
- #if (TARGET_BOARD == MEGA_BOARD) 
-  while(!(RS_485_UCSR & _BV(RS_485_TXC) ))
-  {
-   // yield(); // даём вычитать из буферов ESP и SIM800
-  }
- #elif (TARGET_BOARD == DUE_BOARD) 
-  //TODO: БЛОКИРУЮЩАЯ ОПЕРАЦИЯ!!!
  RS_485_SERIAL.flush();
-/*
-  while((RS_485_UCSR->US_CSR & RS_485_TXC) == 0)
-  {
-    //yield(); // даём вычитать из буферов ESP и SIM800    
-  }
-*/  
- #elif (TARGET_BOARD == STM32_BOARD) 
- //TODO: БЛОКИРУЮЩАЯ ОПЕРАЦИЯ!!!
- RS_485_SERIAL.flush();
- #else
-  #error "Unknown target board!"
- #endif
+ 
 }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
 void UniRS485Gate::executeCommands(const RS485Packet& packet)
