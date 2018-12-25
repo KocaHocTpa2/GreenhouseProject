@@ -79,7 +79,7 @@ void AlarmDispatcher::MarkSMSAlarmDone()
 void AlarmDispatcher::ClearProcessedAlarms()
 {
   #if defined(USE_ALARM_DISPATCHER) && defined(USE_SMS_MODULE) && defined(CLEAR_ALARM_STATUS)
-    processedSMSAlarms.Clear();
+    processedSMSAlarms.clear();
   #endif
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
