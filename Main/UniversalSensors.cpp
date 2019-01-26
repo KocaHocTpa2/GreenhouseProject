@@ -2909,7 +2909,8 @@ void UniNRFGate::Update(uint16_t dt)
      #endif
 
       // проверяем, наш ли пакет
-      if(nrfScratch.head.controller_id == UniDispatcher.GetControllerID())
+      if(nrfScratch.head.controller_id == UniDispatcher.GetControllerID() && (nrfScratch.head.packet_type >= uniSensorsClient && nrfScratch.head.packet_type <= uniExecutionClient)
+       && nrfScratch.head.rf_id == UniDispatcher.GetRFChannel())
       {
       #ifdef NRF_DEBUG
       DEBUG_LOGLN(F("Packet for us :)"));
@@ -2919,6 +2920,8 @@ void UniNRFGate::Update(uint16_t dt)
           client->Register(&nrfScratch);
           client->Update(&nrfScratch,true,ssRadio);
 
+          if(nrfScratch.head.packet_type == uniSensorsClient)
+          {
           //Тут мы должны для всех датчиков модуля добавить в онлайн-очередь
           // время последнего получения значений и интервал между опросами модуля,
           // если таких данных ещё нету у нас.
@@ -2959,7 +2962,7 @@ void UniNRFGate::Update(uint16_t dt)
               } // for
 
 
-          
+          } // if(nrfScratch.head.packet_type == uniSensorsClient)
 
       #ifdef NRF_DEBUG
       DEBUG_LOGLN(F("Controller data updated."));
@@ -3305,7 +3308,7 @@ void UniLoRaGate::Update(uint16_t dt)
      #endif
 
       // проверяем, наш ли пакет
-      if(loRaScratch.head.controller_id == UniDispatcher.GetControllerID())
+      if(loRaScratch.head.controller_id == UniDispatcher.GetControllerID() && (loRaScratch.head.packet_type >= uniSensorsClient && loRaScratch.head.packet_type <= uniExecutionClient))
       {
       #ifdef LORA_DEBUG
       DEBUG_LOGLN(F("LoRa: Packet for us :)"));
@@ -3315,6 +3318,8 @@ void UniLoRaGate::Update(uint16_t dt)
           client->Register(&loRaScratch);
           client->Update(&loRaScratch,true,ssRadio);
 
+          if(loRaScratch.head.packet_type == uniSensorsClient)
+          {
           //Тут мы должны для всех датчиков модуля добавить в онлайн-очередь
           // время последнего получения значений и интервал между опросами модуля,
           // если таких данных ещё нету у нас.
@@ -3355,7 +3360,7 @@ void UniLoRaGate::Update(uint16_t dt)
               } // for
 
 
-          
+          } // if(loRaScratch.head.packet_type == uniSensorsClient)
 
       #ifdef LORA_DEBUG
       DEBUG_LOGLN(F("LoRa: Controller data updated."));
