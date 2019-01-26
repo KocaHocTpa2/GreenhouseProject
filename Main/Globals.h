@@ -65,14 +65,17 @@
 
   #if (BOARD_SUBVERSION == MEGA_GENUINE)
     #include "Configuration_MEGA.h"
+    #include "Configuration_MEGA_NEW.h"
   #elif (BOARD_SUBVERSION == MEGA_MINI)
     #include "Configuration_MEGA_MiniBoard.h"
+    #include "Configuration_MEGA_NEW.h"
   #else
     #error "Unknown board subversion!"
   #endif
   
 #elif (TARGET_BOARD == DUE_BOARD)
   #include "Configuration_DUE.h"
+  #include "Configuration_DUE_NEW.h"
   
 #elif (TARGET_BOARD == STM32_BOARD)
   #include "Configuration_STM32.h"  
