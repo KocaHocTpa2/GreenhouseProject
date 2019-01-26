@@ -13,7 +13,7 @@
   #define  XTAL         1
 
 #else
-  #pragma message "Use DS3231 clock..."
+//#pragma message "Use DS3231 clock..."
 #include <Wire.h>
 #endif
 #include "AbstractModule.h"
@@ -24,9 +24,14 @@ struct RTCTime // данные по текущему времени
   uint8_t minute; // минута (0-59)
   uint8_t hour; // час (0-23)
   uint8_t dayOfWeek; // день недели (1 - понедельник и т.д.)
-  uint8_t dayOfMonth; // день месяца (0-31)
+  uint8_t dayOfMonth; // день месяца (1-31)
   uint8_t month; // месяц(1-12)
   uint16_t year; // формат - ХХХХ
+
+  uint32_t unixtime() const;  
+  RTCTime maketime(uint32_t unixtime);
+
+
 }; 
 //--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_INTERNAL_CLOCK

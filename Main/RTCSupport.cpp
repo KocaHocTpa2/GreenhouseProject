@@ -2,6 +2,43 @@
  #include <Arduino.h>
  #include "AbstractModule.h"
 //--------------------------------------------------------------------------------------------------------------------------------------
+// RTCTime
+//--------------------------------------------------------------------------------------------------------------------------------------
+#include <time.h>
+//--------------------------------------------------------------------------------------------------------------------------------------
+uint32_t RTCTime::unixtime() const
+{
+  tm t;
+  t.tm_hour = hour;
+  t.tm_isdst = 0;
+  t.tm_mday = dayOfMonth;
+  t.tm_min = minute;
+  t.tm_mon = month - 1;
+  t.tm_sec = second;
+  t.tm_wday = dayOfWeek - 1;
+  t.tm_year = year - 1900;
+
+  return mktime(&t);
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
+RTCTime RTCTime::maketime(uint32_t time)
+{
+  RTCTime result;
+
+  tm* t = localtime((time_t*)&time);
+
+  result.hour = t->tm_hour;
+  //t.tm_isdst = 0;
+  result.dayOfMonth = t->tm_mday;
+  result.minute = t->tm_min;
+  result.month = t->tm_mon + 1;
+  result.second = t->tm_sec;
+  result.dayOfWeek = t->tm_wday;
+  result.year = t->tm_year + 1900;  
+
+  return result;
+}    
+//--------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_INTERNAL_CLOCK
 //--------------------------------------------------------------------------------------------------------------------------------------
 char RealtimeClock::workBuff[12] = {0};
