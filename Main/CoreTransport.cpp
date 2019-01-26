@@ -3415,6 +3415,13 @@ CoreSIM800Transport::CoreSIM800Transport() : CoreTransport(SIM800_MAX_CLIENTS)
   workStream = NULL;
   signalQuality = 0;
   smsToSend = NULL;
+  inWaitingGPRS_CIICR = false;
+  waitGprsReconnect = false;
+
+  #ifdef GSM_TIME_SYNC
+    PSUTTZreceived = false;
+    syncTimeTimerEnabled = false;
+  #endif  
 
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
@@ -3609,9 +3616,28 @@ void CoreSIM800Transport::sendCommand(SIM800Commands command)
     case smaCIPSHUT:
     {
       #ifdef GSM_DEBUG_MODE
-      DEBUG_LOGLN(F("SIM800: Deactivate GPRS connection..."));
+      DEBUG_LOGLN(F("SIM800: Deactivate PDP context..."));
       #endif
       sendCommand(F("AT+CIPSHUT"));      
+    }
+    break;
+
+    case smaCGATT:
+    {
+      #ifdef GSM_DEBUG_MODE
+      DEBUG_LOGLN(F("SIM800: Check GPRS availability..."));
+      #endif
+      sendCommand(F("AT+CGATT?"));      
+      
+    }
+    break;
+
+    case smaCGATTach:
+    {
+      #ifdef GSM_DEBUG_MODE
+      DEBUG_LOGLN(F("SIM800: Attach to GPRS..."));
+      #endif
+      sendCommand(F("AT+CGATT=1"));            
     }
     break;
 
@@ -3620,16 +3646,57 @@ void CoreSIM800Transport::sendCommand(SIM800Commands command)
       #ifdef GSM_DEBUG_MODE
       DEBUG_LOGLN(F("SIM800: Activate GPRS connection..."));
       #endif
+
+      inWaitingGPRS_CIICR = true;
       sendCommand(F("AT+CIICR"));            
     }
     break;
 
     case smaCIFSR:
     {
+      flags.gprsAvailable = false;
+      //cifsrIPfound = false;
       sendCommand(F("AT+CIFSR"));      
     }
     break;
+    
+  #ifdef GSM_TIME_SYNC
+  //////////////////////////////
+  // синхронизация времени
+  //////////////////////////////
+    case smaStartTimeSync:
+    {
+      #ifdef GSM_DEBUG_MODE
+      DEBUG_LOGLN(F("SIM800: Enable time sync..."));
+      #endif  
 
+      sendCommand(F("AT+CLTS=1"));
+    }
+    break;
+
+    case smaSaveSyncSettings:
+    {
+      #ifdef GSM_DEBUG_MODE
+      DEBUG_LOGLN(F("SIM800: Save sync settings..."));
+      #endif  
+
+      sendCommand(F("AT&W"));
+      
+    }
+    break;
+
+
+    case smaGetSyncTime:
+    {
+      #ifdef GSM_DEBUG_MODE
+      DEBUG_LOGLN(F("SIM800: Get time..."));
+      #endif  
+
+      sendCommand(F("AT+CCLK?"));          
+    }
+    break;
+  #endif
+  
     case smaCSTT:
     {
       #ifdef GSM_DEBUG_MODE
@@ -3746,6 +3813,8 @@ void CoreSIM800Transport::sendCommand(SIM800Commands command)
       #ifdef GSM_DEBUG_MODE
       DEBUG_LOGLN(F("SIM800: Check if modem available..."));
       #endif
+
+      csqReceived = false;
       sendCommand(F("AT+CSQ"));
     }
     break;
@@ -4123,13 +4192,177 @@ void CoreSIM800Transport::processKnownStatusFromSIM800(const String& line)
   else
   if(line.startsWith(F("+PDP: DEACT")))
   {
+    flags.gprsAvailable = false;
+    
+    if(!inWaitingGPRS_CIICR) // если мы не ждём коннекта по GPRS
+    {
       #ifdef GSM_DEBUG_MODE
         DEBUG_LOGLN(F("SIM800: GPRS connection broken, restart!")); 
       #endif
 
       rebootModem();
+    }
       
   } // if(line.startsWith(F("+PDP:DEACT")))
+  else
+  if(line.startsWith(F("+CSQ: ")))
+  {
+    signalQuality = 0; // нет сигнала
+    csqReceived = true;
+
+    String thisCommandLine = line;
+    
+    // получили уровень сигнала
+    thisCommandLine.remove(0,6);
+    int commaIdx = thisCommandLine.indexOf(',');
+    if(commaIdx != -1)
+    {
+      thisCommandLine.remove(commaIdx);
+      int quality = thisCommandLine.toInt();
+
+      #ifdef GSM_DEBUG_MODE
+        DEBUG_LOG(F("GSM signal quality, raw: "));
+        DEBUG_LOGLN(String(quality));
+      #endif
+
+      if(quality != 99)
+      {
+        // если есть сигнал, пересчитываем в dBm
+        int dBm = -115 + quality*2;
+
+        #ifdef GSM_DEBUG_MODE
+          DEBUG_LOG(F("GSM signal dBm: "));
+          DEBUG_LOGLN(String(dBm));
+        #endif
+
+        // теперь пересчитываем в значение 0-4, что соответствует:
+        // 0 - нет сигнала
+        // 4 - отличный сигнал
+        if(dBm >= -73)
+          signalQuality = 4;
+        else if(dBm >= -83)
+          signalQuality = 3;
+        else if(dBm >= -93)
+          signalQuality = 2;
+        else
+          signalQuality = 1;
+
+        #ifdef GSM_DEBUG_MODE
+          DEBUG_LOG(F("GSM signal quality, computed: "));
+          DEBUG_LOGLN(String(signalQuality));
+        #endif                            
+          
+      }
+    }
+  } // CSQ
+  else
+  if(line.startsWith(F("+CGATT: ")))
+  {
+    cgattStatusReceived = true;
+    cgattStatus = false;
+    String tl = line;
+    tl.remove(0,8);
+    if(tl.toInt() == 1)
+    {
+      cgattStatus = true;
+    }
+
+    if(cgattKnownAnswerFound) // получили +CGATT после ответа ОК
+    {
+      cgattKnownAnswerFound = false;
+      machineState = sim800Idle;
+      if(cgattStatus)
+      {
+      #ifdef GSM_DEBUG_MODE
+        DEBUG_LOGLN(F("SIM800: CGATT, start GPRS..."));
+      #endif
+        
+        initCommandsQueue.push_back(smaCSTT);
+        initCommandsQueue.push_back(smaCIPSHUT);
+      }
+      else
+      {
+        #ifdef GSM_DEBUG_MODE
+          DEBUG_LOGLN(F("SIM800: GPRS not attached, try to attach..."));
+        #endif
+        
+        //waitGprsReconnect = true;
+        //gprsReconnectTimer = millis();
+        initCommandsQueue.push_back(smaCGATTach);
+      }
+    }
+  } // if(line.startsWith(F("+CGATT: ")))
+  #ifdef GSM_TIME_SYNC
+  else
+  if(line.startsWith(F("*PSUTTZ: ")))
+  {
+    PSUTTZreceived = true;
+    
+    #ifdef GSM_DEBUG_MODE
+      DEBUG_LOGLN(F("SIM800: CATCH OPERATOR TIME!"));
+    #endif
+            
+    // пришло время оператора, можно выставлять часы
+    String timeline = line;
+    timeline.remove(0,9);
+    
+    // теперь там строка вида 2019,1,21,18,31,58,"+12",0
+    // и её надо разбить на лексемы
+    Vector<const char*> params;
+
+    const char* p = timeline.c_str();
+    
+    for(size_t i=0;i<timeline.length();i++)
+    {
+        if(timeline[i] == ',')
+        {
+          timeline[i] = 0;
+          params.push_back(p);
+          p = timeline.c_str() + i + 1;
+        }
+      if(!*p)
+        break;
+    }
+
+    if(*p)
+      params.push_back(p);
+
+    if(params.size() > 7)
+    {
+      // разобрали норм
+      RTCTime tm;
+
+      tm.year = atoi(params[0]);
+      tm.month = atoi(params[1]);
+      tm.dayOfMonth = atoi(params[2]);
+      tm.hour = atoi(params[3]);
+      tm.minute = atoi(params[4]);
+      tm.second = atoi(params[5]);
+      
+      String offset = params[6];
+      if(offset[0] == '"')
+        offset.remove(0,1);
+
+      if(offset[offset.length()-1] == '"')
+        offset.remove(offset.length()-1,1);
+
+      int32_t offset_sec = offset.toInt();
+      offset_sec *= 15*60;
+
+      uint32_t ut = tm.unixtime();
+      ut += offset_sec;
+
+      tm = tm.maketime(ut);
+
+      RealtimeClock rtc = MainController->GetClock();
+
+      rtc.setTime(tm);    
+      
+    }
+    
+  } // if(line.startsWith(F("*PSUTTZ: ")))
+  #endif // GSM_TIME_SYNC
+  
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 bool CoreSIM800Transport::checkIPD(const TransportReceiveBuffer& buff)
@@ -4438,7 +4671,7 @@ void CoreSIM800Transport::update()
             if(initCommandsQueue.size())
             {
                 #ifdef GSM_DEBUG_MODE
-                  DEBUG_LOGLN(F("SIM800: process next init command..."));
+                  DEBUG_LOGLN(F("SIM800: process next command..."));
                 #endif
                 currentCommand = initCommandsQueue[initCommandsQueue.size()-1];
                 initCommandsQueue.pop();
@@ -4551,6 +4784,41 @@ void CoreSIM800Transport::update()
               {
                 timer = millis(); // обновляем таймер в режиме ожидания, поскольку мы не ждём ответа на команды
 
+                if(waitGprsReconnect)
+                {
+                  if(millis() - gprsReconnectTimer > GPRS_RECONNECT_TIME)
+                  {
+                    waitGprsReconnect = false;
+                    #ifdef GSM_DEBUG_MODE
+                      DEBUG_LOGLN(F("SIM800: TRY TO RECONNECT GPRS!"));
+                    #endif         
+                      
+                        String apn = GetAPN();
+                        if(apn.length())
+                        {
+                          //initCommandsQueue.push_back(smaCSTT);
+                            cgattStatusReceived = false;
+                            cgattKnownAnswerFound = false;
+                            initCommandsQueue.push_back(smaCGATT);
+
+                        }
+                      
+                        //initCommandsQueue.push_back(smaCIPSHUT);                               
+                  }
+                } // waitGprsReconnect
+                
+                #ifdef GSM_TIME_SYNC
+                if(syncTimeTimerEnabled && (millis() - syncTimeTimer > GSM_SYNC_TIME_INTERVAL))
+                {
+                  #ifdef GSM_DEBUG_MODE
+                    DEBUG_LOGLN(F("SIM800: want to SYNC TIME !!!"));
+                  #endif
+                  
+                  syncTimeTimerEnabled = false;
+                  initCommandsQueue.push_back(smaGetSyncTime);
+                }
+                #endif // GSM_TIME_SYNC
+
                 static uint32_t hangTimer = 0;
                 if(millis() - hangTimer > GSM_AVAILABLE_CHECK_TIME)
                 {
@@ -4567,11 +4835,14 @@ void CoreSIM800Transport::update()
                     static uint32_t pingTimer = 0;
                     if(millis() - pingTimer > GSM_PING_INTERVAL)
                     {
-                        #ifdef GSM_DEBUG_MODE
-                          DEBUG_LOGLN(F("SIM800: PING GPRS!"));
-                        #endif
                         pingTimer = millis();
-                        sendCommand(smaPING);                      
+                        if(flags.gprsAvailable)
+                        {
+                          #ifdef GSM_DEBUG_MODE
+                            DEBUG_LOGLN(F("SIM800: PING GPRS!"));
+                          #endif
+                          sendCommand(smaPING);                      
+                        }
                     }
                   #endif // GSM_PULL_GPRS_BY_PING
                 } // else
@@ -4926,6 +5197,86 @@ void CoreSIM800Transport::update()
                   }
                   break; // smaCIPHEAD
 
+                  case smaCGATT:
+                  {
+                    // ждём ответа на команду проверки доступностим GPRS.
+                    // ответ, теоретически, может придти позже или раньше статуса (ОК и т.п.)
+                    // поэтому мы должны грамотно обработать эту ситуацию.
+                    if(isKnownAnswer(thisCommandLine,knownAnswer))
+                    {
+                      cgattKnownAnswerFound = true;
+                      
+                      if(knownAnswer != gsmOK)
+                      {
+                          #ifdef GSM_DEBUG_MODE
+                            DEBUG_LOGLN(F("SIM800: CGATT command processed, CAN'T start GPRS!"));
+                          #endif
+                        
+                        machineState = sim800Idle; // переходим к следующей команде
+                      }
+                      else
+                      {
+                        // проверяем - если до OK мы получили ответ, то вываливаемся
+                        if(cgattStatusReceived)
+                        {
+                          if(cgattStatus)
+                          {
+                          #ifdef GSM_DEBUG_MODE
+                            DEBUG_LOGLN(F("SIM800: CGATT processed, START GPRS!"));
+                          #endif
+                            
+                            initCommandsQueue.push_back(smaCSTT);
+                            initCommandsQueue.push_back(smaCIPSHUT);
+                          }
+                          else
+                          {
+                          #ifdef GSM_DEBUG_MODE
+                            DEBUG_LOGLN(F("SIM800: Try to attach GPRS..."));
+                          #endif
+                            
+                            //waitGprsReconnect = true;
+                            //gprsReconnectTimer = millis();
+                            initCommandsQueue.push_back(smaCGATTach);
+                          }                          
+                          machineState = sim800Idle; // переходим к следующей команде 
+                        }
+                      }
+                      
+                    }
+
+                    
+                  }
+                  break; // smaCGATT
+
+                  case smaCGATTach:
+                  {
+                    if(isKnownAnswer(thisCommandLine,knownAnswer))
+                    {
+                      if(knownAnswer == gsmOK)
+                      {
+                          #ifdef GSM_DEBUG_MODE
+                            DEBUG_LOGLN(F("SIM800: GPRS attached, continue..."));
+                          #endif
+                                                  
+                            initCommandsQueue.push_back(smaCSTT);
+                            initCommandsQueue.push_back(smaCIPSHUT);
+
+                      }
+                      else
+                      {
+                          #ifdef GSM_DEBUG_MODE
+                            DEBUG_LOGLN(F("SIM800: Can't attach GPRS, try later..."));
+                          #endif
+                            
+                          waitGprsReconnect = true;
+                          gprsReconnectTimer = millis();                      
+                      }
+
+                      machineState = sim800Idle;
+                    }
+                  }
+                  break; // smaCGATTach
+
                   case smaCIPSHUT:
                   {
                     if(isKnownAnswer(thisCommandLine,knownAnswer))
@@ -4945,6 +5296,8 @@ void CoreSIM800Transport::update()
                   {
                     if(isKnownAnswer(thisCommandLine,knownAnswer))
                     {
+                      inWaitingGPRS_CIICR = false;
+                      
                       #ifdef GSM_DEBUG_MODE
                               DEBUG_LOGLN(F("SIM800: CIICR command processed."));
                       #endif
@@ -4959,9 +5312,15 @@ void CoreSIM800Transport::update()
                                                    
                         #ifdef GSM_DEBUG_MODE
                               DEBUG_LOGLN(F("SIM800: start checking GPRS connection..."));
-                        #endif
+                        #endif                        
                         initCommandsQueue.push_back(smaCIFSR);
                         gprsCheckingAttempts = 0;
+                      }
+                      else
+                      {
+                        // ошибка соединения, попробуем позже
+                        waitGprsReconnect = true;
+                        gprsReconnectTimer = millis();
                       }
                     }
                   }
@@ -4969,58 +5328,157 @@ void CoreSIM800Transport::update()
 
                   case smaCIFSR:
                   {
-                    if(isKnownAnswer(thisCommandLine,knownAnswer))
-                    {
-                      // если мы здесь - мы не получили IP-адреса, т.к. ответ - один из известных
-                      
-                      if(knownAnswer == gsmOK)
-                      {
-
-                        // Тут пробуем чуть позже ещё раз эту команду
-                        if(++gprsCheckingAttempts <=5)
-                        {
-                          #ifdef GSM_DEBUG_MODE
-                              DEBUG_LOGLN(F("SIM800: try to get GPRS IP address a little bit later..."));
-                          #endif
-                          
-                          idleTime = 5000; // обработаем ответ через 5 секунд
-                          flags.onIdleTimer = true;
-                          idleTimer = millis();
-                          initCommandsQueue.push_back(smaCIFSR);
-                          machineState = sim800Idle; // переходим к следующей команде  
-                        }
-                        else
-                        {
-                          #ifdef GSM_DEBUG_MODE
-                              DEBUG_LOGLN(F("SIM800: Unable to get GPRS IP address!"));
-                          #endif
-                          // всё, исчерпали лимит на попытки получить IP-адрес
-                          machineState = sim800Idle; // переходим к следующей команде
-                          flags.gprsAvailable = false;
-                        }
-                      }
-                      else
-                      {
-                        #ifdef GSM_DEBUG_MODE
-                              DEBUG_LOGLN(F("SIM800: GPRS connection fail!"));
-                        #endif
-                        flags.gprsAvailable = false;
-                        machineState = sim800Idle; // переходим к следующей команде
-                      }
-                    } // isKnownAnswer
-                    else
                     if(thisCommandLine.length() && thisCommandLine.indexOf(".") != -1)
                     {
-                      #ifdef GSM_DEBUG_MODE
+                        // известный ответ получен, мы можем вываливаться
+                          #ifdef GSM_DEBUG_MODE
                               DEBUG_LOG(F("SIM800: GPRS IP address found - "));                      
                               DEBUG_LOGLN(thisCommandLine);
-                      #endif
-                      
-                      flags.gprsAvailable = true;
-                      machineState = sim800Idle; // переходим к следующей команде          
+                          #endif
+                        
+                        flags.gprsAvailable = true;
+                       // cifsrIPfound = true;
+
+                      // всё хорошо, получили IP-адрес, можем вываливаться
+                      machineState = sim800Idle; // переходим к следующей команде
+                        
                     }
+                    else
+                      if(isKnownAnswer(thisCommandLine,knownAnswer))
+                      {
+                          // пытаемся переполучить
+                          if(++gprsCheckingAttempts <=5)
+                          {
+                            #ifdef GSM_DEBUG_MODE
+                                DEBUG_LOGLN(F("SIM800: try to get GPRS IP address a little bit later..."));
+                            #endif
+                            
+                            idleTime = 5000; // обработаем ответ через 5 секунд
+                            flags.onIdleTimer = true;
+                            idleTimer = millis();
+                            initCommandsQueue.push_back(smaCIFSR);
+                            machineState = sim800Idle; // переходим к следующей команде  
+                          }
+                          else
+                          {
+                            #ifdef GSM_DEBUG_MODE
+                                DEBUG_LOGLN(F("SIM800: Unable to get GPRS IP address!"));
+                            #endif
+                            // всё, исчерпали лимит на попытки получить IP-адрес
+                            machineState = sim800Idle; // переходим к следующей команде
+                            flags.gprsAvailable = false;
+                          }                                   
+                   
+                      } // else if isKnownAnswer
+                       
                   }
                   break; // smaCIFSR
+
+                  #ifdef GSM_TIME_SYNC
+                      //////////////////////////////
+                      // синхронизация времени
+                      //////////////////////////////
+                      case smaStartTimeSync:
+                      {
+                        if(isKnownAnswer(thisCommandLine,knownAnswer))
+                        {
+                          if(knownAnswer == gsmOK)
+                          {
+                            initCommandsQueue.push_back(smaSaveSyncSettings);
+                          }
+                          else
+                          {
+                            #ifdef GSM_DEBUG_MODE
+                                DEBUG_LOGLN(F("SIM800: Unable to sync time!"));
+                            #endif
+                          }
+
+                          machineState = sim800Idle; // переходим к следующей команде
+                        }
+                      }
+                      break; // smaStartTimeSync
+
+                      case smaSaveSyncSettings:
+                      {
+                        if(isKnownAnswer(thisCommandLine,knownAnswer))
+                        {
+                          if(knownAnswer == gsmOK)
+                          {
+                            initCommandsQueue.push_back(smaGetSyncTime);
+                          }
+                          else
+                          {
+                            #ifdef GSM_DEBUG_MODE
+                                DEBUG_LOGLN(F("SIM800: Unable to save sync settings!"));
+                            #endif
+                          }
+
+                          machineState = sim800Idle; // переходим к следующей команде
+                        }
+                      }
+                      break; // smaTimeSyncConnectToServer                    
+
+                      case smaGetSyncTime:
+                      {
+                        if(thisCommandLine.startsWith(F("+CCLK: \"")))
+                        {
+                          // тут приходит время. Его можно использовать, только если приходил PSUTTZ, в противном случае - там будет неправильное время
+                          if(PSUTTZreceived)
+                          {
+                            #ifdef GSM_DEBUG_MODE
+                                DEBUG_LOGLN(F("SIM800: TIME RECEIVED!"));
+                            #endif
+
+                             // тут разбираем время, строка имеет вид
+                             // +CCLK: "19/01/21,22:22:30+12"
+                             String timeline = thisCommandLine;
+                             timeline.remove(0,8);
+
+                             if(timeline[timeline.length()-1] == '"')
+                              timeline.remove(timeline.length()-1,1);
+
+                             if(timeline.length() >= 18)
+                             {
+                               // разбиваем на части
+                               timeline[2] = 0;
+                               timeline[5] = 0;
+                               timeline[8] = 0;
+                               timeline[11] = 0;
+                               timeline[14] = 0;
+                               timeline[17] = 0;
+  
+  
+                               RTCTime tm;
+                               // выцепляем компоненты
+                               tm.year = atoi(timeline.c_str()) + 2000;
+                               tm.month = atoi(&timeline[3]);
+                               tm.dayOfMonth = atoi(&timeline[6]);
+                               tm.hour = atoi(&timeline[9]);
+                               tm.minute = atoi(&timeline[12]);
+                               tm.second = atoi(&timeline[15]);
+  
+                               uint32_t ut = tm.unixtime();
+                               tm = tm.maketime(ut);
+  
+                               RealtimeClock rtc = MainController->GetClock();
+  
+                               rtc.setTime(tm);
+                               
+                             } // if(timeline.length() >= 18)
+
+                             syncTimeTimerEnabled = true;
+                             syncTimeTimer = millis();
+                          } // if(PSUTTZreceived)
+                        }
+
+                        
+                        if(isKnownAnswer(thisCommandLine,knownAnswer))
+                        {                        
+                          machineState = sim800Idle; // переходим к следующей команде
+                        }
+                      }
+                      break; // smaGetSyncTime
+                  #endif // GSM_TIME_SYNC
 
                   case smaCSTT:
                   {
@@ -5247,61 +5705,22 @@ void CoreSIM800Transport::update()
                   break; // smaWaitReg
                   
                   case smaCheckModemHang:
-                  {
-                    if(thisCommandLine.startsWith(F("+CSQ: ")))
-                    {
-                      signalQuality = 0; // нет сигнала
-                      
-                      // получили уровень сигнала
-                      thisCommandLine.remove(0,6);
-                      int commaIdx = thisCommandLine.indexOf(',');
-                      if(commaIdx != -1)
-                      {
-                        thisCommandLine.remove(commaIdx);
-                        int quality = thisCommandLine.toInt();
-
-                        #ifdef GSM_DEBUG_MODE
-                          DEBUG_LOG(F("GSM signal quality, raw: "));
-                          DEBUG_LOGLN(String(quality));
-                        #endif
-
-                        if(quality != 99)
-                        {
-                          // если есть сигнал, пересчитываем в dBm
-                          int dBm = -115 + quality*2;
-
-                          #ifdef GSM_DEBUG_MODE
-                            DEBUG_LOG(F("GSM signal dBm: "));
-                            DEBUG_LOGLN(String(dBm));
-                          #endif
-
-                          // теперь пересчитываем в значение 0-4, что соответствует:
-                          // 0 - нет сигнала
-                          // 4 - отличный сигнал
-                          if(dBm >= -73)
-                            signalQuality = 4;
-                          else if(dBm >= -83)
-                            signalQuality = 3;
-                          else if(dBm >= -93)
-                            signalQuality = 2;
-                          else
-                            signalQuality = 1;
-
-                          #ifdef GSM_DEBUG_MODE
-                            DEBUG_LOG(F("GSM signal quality, computed: "));
-                            DEBUG_LOGLN(String(signalQuality));
-                          #endif                            
-                            
-                        }
-                      }
-                    }
-                    
+                  {                                 
                     if(isKnownAnswer(thisCommandLine,knownAnswer))
                     {
                       #ifdef GSM_DEBUG_MODE
                               DEBUG_LOGLN(F("SIM800: modem answered and available."));
                       #endif
-                      machineState = sim800Idle; // переходим к следующей команде
+
+                      if(knownAnswer == gsmOK)
+                      {
+                        if(csqReceived)                     
+                          machineState = sim800Idle; // переходим к следующей команде
+                      }
+                      else
+                      {
+                         machineState = sim800Idle; // переходим к следующей команде
+                      }
                       
                     } // if(isKnownAnswer
 
@@ -5578,6 +5997,11 @@ void CoreSIM800Transport::restart()
   flags.gprsAvailable = false;
   flags.ignoreNextEmptyLine = false;
 
+  #ifdef GSM_TIME_SYNC
+    PSUTTZreceived = false;
+    syncTimeTimerEnabled = false;
+  #endif
+  
   signalQuality = 0;
   
   timer = millis();
@@ -5604,10 +6028,25 @@ void CoreSIM800Transport::createInitCommands(bool addResetCommand)
   String apn = GetAPN();
   if(apn.length())
   {
-    initCommandsQueue.push_back(smaCSTT);
+    //initCommandsQueue.push_back(smaCSTT);
+    cgattStatusReceived = false;
+    cgattKnownAnswerFound = false;
+    initCommandsQueue.push_back(smaCGATT);
   }
 
-  initCommandsQueue.push_back(smaCIPSHUT);
+
+ // initCommandsQueue.push_back(smaCIPSHUT);
+
+    #ifdef GSM_TIME_SYNC
+    //////////////////////////////
+    // синхронизация времени
+    //////////////////////////////
+    initCommandsQueue.push_back(smaStartTimeSync);
+    #endif // GSM_TIME_SYNC   
+  
+  // получим уровень сигнала при старте
+  initCommandsQueue.push_back(smaCheckModemHang);
+  
 
   initCommandsQueue.push_back(smaCIPMUX);
   initCommandsQueue.push_back(smaCIPMODE);

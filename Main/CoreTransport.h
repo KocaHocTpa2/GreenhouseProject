@@ -433,7 +433,19 @@ typedef enum
 #ifdef GSM_PULL_GPRS_BY_PING  
   smaPING,
 #endif
-  smaCIPSHUT  
+  smaCIPSHUT,
+  smaCGATT,
+  smaCGATTach,
+
+  #ifdef GSM_TIME_SYNC
+  //////////////////////////////
+  // синхронизация времени
+  //////////////////////////////
+  smaStartTimeSync,
+  smaSaveSyncSettings,
+  smaGetSyncTime,
+  #endif
+    
 } SIM800Commands;
 //--------------------------------------------------------------------------------------------------------------------------------------
 typedef Vector<SIM800Commands> SIM800CommandsList;
@@ -516,6 +528,18 @@ class CoreSIM800Transport : public CoreTransport
 
   private:
 
+      #ifdef GSM_TIME_SYNC
+        bool PSUTTZreceived;
+        bool syncTimeTimerEnabled;
+        uint32_t syncTimeTimer;
+      #endif
+
+      bool inWaitingGPRS_CIICR;
+      uint32_t gprsReconnectTimer;
+      bool waitGprsReconnect;
+      
+      bool csqReceived;
+      bool cgattStatusReceived, cgattStatus, cgattKnownAnswerFound;
       uint8_t signalQuality;
 
       void rebootModem();
