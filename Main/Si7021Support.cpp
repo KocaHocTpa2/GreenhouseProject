@@ -34,10 +34,11 @@ HumidityAnswer Si7021::read()
   {
 */  
      dt.IsOK = true;
+     int iTmp;
 
     if(humidity > -1.0)
     { 
-      int iTmp = humidity*100;
+      iTmp = humidity*100;
       
       dt.Humidity = iTmp/100;
       dt.HumidityDecimal = iTmp%100;
