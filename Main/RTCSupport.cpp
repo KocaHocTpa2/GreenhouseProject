@@ -34,6 +34,10 @@ RTCTime RTCTime::maketime(uint32_t time)
   result.month = t->tm_mon + 1;
   result.second = t->tm_sec;
   result.dayOfWeek = t->tm_wday;
+  result.dayOfWeek++;
+  if(result.dayOfWeek > 7)
+    result.dayOfWeek = result.dayOfWeek - 7;
+    
   result.year = t->tm_year + 1900;  
 
   return result;
@@ -552,11 +556,23 @@ RTCTime RealtimeClock::getTime()
         if(wireInterface->requestFrom(DS3231Address, 7) == 7) // читаем 7 байт, начиная с регистра 0
         {
             t.second = bcd2dec(wireInterface->read() & 0x7F);
+            t.second = constrain(t.second,0,59);
+            
             t.minute = bcd2dec(wireInterface->read());
+            t.minute = constrain(t.minute,0,59);
+            
             t.hour = bcd2dec(wireInterface->read() & 0x3F);
+            t.hour = constrain(t.hour,0,23);
+            
             t.dayOfWeek = bcd2dec(wireInterface->read());
+            t.dayOfWeek = constrain(t.dayOfWeek,1,7);
+            
             t.dayOfMonth = bcd2dec(wireInterface->read());
+            t.dayOfMonth = constrain(t.dayOfMonth,1,31);
+            
             t.month = bcd2dec(wireInterface->read());
+            t.month = constrain(t.month,1,12);
+            
             t.year = bcd2dec(wireInterface->read());     
             t.year += 2000; // приводим время к нормальному формату
         } // if
