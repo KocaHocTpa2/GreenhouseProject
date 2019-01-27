@@ -23,6 +23,12 @@ void WindowState::ResetToMaxPosition()
   CurrentPosition = MainController->GetSettings()->GetOpenInterval();
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+uint8_t WindowState::GetCurrentPositionPercents()
+{
+  unsigned long oI = MainController->GetSettings()->GetOpenInterval();
+  return (CurrentPosition*100)/oI;
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
 void WindowState::Setup(uint8_t index, uint8_t relayChannel1, uint8_t relayChannel2)
 {
   #ifdef USE_FEEDBACK_MANAGER
@@ -445,6 +451,16 @@ void TempSensors::SaveChannelState(uint8_t channel, uint8_t state)
   #endif
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+bool TempSensors::IsAnyWindowOpen()
+{
+  for(uint8_t i=0;i<SUPPORTED_WINDOWS;i++)
+  {
+    if(IsWindowOpen(i))
+      return true;
+  }
+  return false;
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
 bool TempSensors::IsWindowOpen(uint8_t windowNumber)
 {
   if(windowNumber >= SUPPORTED_WINDOWS)
@@ -490,7 +506,7 @@ void TempSensors::SetupWindows()
      #endif
 
     #ifdef USE_FEEDBACK_MANAGER
-      // используем менеджер обратной связи
+      // используем менеджер обратной связи, позиция должна придти
     #else
     // просим окна закрыться при старте контроллера
     Windows[i].ChangePosition(0,true);
@@ -730,6 +746,31 @@ void TempSensors::WindowFeedback(uint8_t windowNumber, bool isCloseSwitchTrigger
   #endif
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
+bool TempSensors::CanDriveWindows()
+{
+  // тут проверяем, можем ли мы выполнить команду на смену позиции.
+  // если используется менеджер обратной связи - мы не можем ничего делать,
+  // пока менеджер ждёт первого пакета обратной связи
+  #ifdef USE_FEEDBACK_MANAGER
+    if(FeedbackManager.IsWaitingForFirstWindowsFeedback())
+    {
+      // ничего не делаем, поскольку всё ещё ждём информации по положению окон
+      return false;
+    }
+  #endif // USE_FEEDBACK_MANAGER
+
+  // если хотя бы одно из окон находится в положении непрерываемого движения - считаем, что мы не можем рулить окнами
+  // при помощи внешних команд
+
+  for(int i=0;i<SUPPORTED_WINDOWS;i++)
+  {
+     if(Windows[i].IsInUninterruptedWay()) // одно из окон находится в непрерываемом движении (мы используем это ТОЛЬКО для закрытия при старте)
+      return false; // поэтому пока они не закроются - управлять окнами при помощи внешних команд нельзя
+  }  
+
+  return true;
+}
+//--------------------------------------------------------------------------------------------------------------------------------------
 bool  TempSensors::ExecCommand(const Command& command, bool wantAnswer)
 {
   GlobalSettings* sett = MainController->GetSettings();
@@ -749,6 +790,14 @@ bool  TempSensors::ExecCommand(const Command& command, bool wantAnswer)
       if(commandRequested == PROP_WINDOW) // надо записать состояние окна, от нас просят что-то сделать
       {
 
+        if(!CanDriveWindows())
+        {
+          // пока не можем управлять окнами, ждём их полного закрытия
+          // отвечаем на команду
+          MainController->Publish(this,command);        
+          return PublishSingleton.Flags.Status;
+        }
+         /*
         // тут проверяем, можем ли мы выполнить команду на смену позиции.
         // если используется менеджер обратной связи - мы не можем ничего делать,
         // пока менеджер ждёт первого пакета обратной связи
@@ -761,7 +810,8 @@ bool  TempSensors::ExecCommand(const Command& command, bool wantAnswer)
             
               return PublishSingleton.Flags.Status;
           }
-        #endif
+        #endif // USE_FEEDBACK_MANAGER
+        */
         
         if(command.IsInternal() // если команда пришла от другого модуля
         && workMode == wmManual) // и мы в ручном режиме, то
@@ -866,7 +916,7 @@ bool  TempSensors::ExecCommand(const Command& command, bool wantAnswer)
           } // for
 
           // если запрошенный или рассчитанный интервал больше нуля - окна открыты, иначе - закрыты
-          SAVE_STATUS(WINDOWS_STATUS_BIT,targetPosition > 0 ? 1 : 0); // сохраняем состояние окон
+          SAVE_STATUS(WINDOWS_STATUS_BIT,/*targetPosition > 0 ? 1 : 0*/IsAnyWindowOpen() ? 1 : 0); // сохраняем состояние окон
           SAVE_STATUS(WINDOWS_MODE_BIT,workMode == wmAutomatic ? 1 : 0); // сохраняем режим работы окон
 
           // какую команду запросили, такую и возвращаем, всё равно в результате выполнения

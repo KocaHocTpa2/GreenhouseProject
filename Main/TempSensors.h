@@ -52,10 +52,16 @@ class WindowState
 public:
 
   bool IsBusy() {return flags.OnMyWay;} // заняты или нет?
+
+  bool IsInUninterruptedWay() // проверяет, можно ли прерывать движение окна
+  {
+    return IsBusy() && waitForChangePositionDone;
+  }
   
   bool ChangePosition(unsigned long newPos, bool waitForChangePositionDone=false); // меняет позицию
   
   unsigned long GetCurrentPosition() {return CurrentPosition;}
+  uint8_t GetCurrentPositionPercents();
   void ResetToMaxPosition();
   uint8_t GetDirection() {return flags.Direction;}
 
@@ -134,10 +140,16 @@ class TempSensors : public AbstractModule // модуль опроса темп�
     void SetWorkMode(uint8_t m) {workMode = m;}
 
     void SaveChannelState(uint8_t channel, uint8_t state); // сохраняем состояние каналов
-    
+
+    bool IsAnyWindowOpen();
     bool IsWindowOpen(uint8_t windowNumber); // сообщает, открывается или открыто ли нужное окно
-    void CloseAllWindows();
+
+    void CloseAllWindows(); // вызывается менеджером обратной связи !!!
     void CloseWindow(uint8_t num);
+
+    WindowState* GetWindow(uint8_t num) { return &(Windows[num]); }
+
+    bool CanDriveWindows(); // возвращает true, если окнами можно управлять при помощи внешних команд (т.е. после старта они закрылись)
 
     // получена информация обратной связи по состоянию окна
     void WindowFeedback(uint8_t windowNumber, bool isCloseSwitchTriggered, bool isOpenSwitchTriggered, bool hasPosition, uint8_t positionPercents, bool isFirstFeedback);
