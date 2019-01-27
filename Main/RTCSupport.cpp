@@ -36,6 +36,8 @@ RTCTime RTCTime::maketime(uint32_t time)
   result.dayOfWeek = t->tm_wday;
   
   if(!result.dayOfWeek)
+    result.dayOfWeek = 7;
+  else
     result.dayOfWeek++;
     
   if(result.dayOfWeek > 7)
