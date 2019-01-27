@@ -41,7 +41,7 @@ RTCTime RTCTime::maketime(uint32_t time)
     result.dayOfWeek++;
     
   if(result.dayOfWeek > 7)
-    result.dayOfWeek = 7;
+    result.dayOfWeek = result.dayOfWeek - 7;
     
   result.year = t->tm_year + 1900;  
 
