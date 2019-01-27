@@ -34,9 +34,12 @@ RTCTime RTCTime::maketime(uint32_t time)
   result.month = t->tm_mon + 1;
   result.second = t->tm_sec;
   result.dayOfWeek = t->tm_wday;
-  result.dayOfWeek++;
+  
+  if(!result.dayOfWeek)
+    result.dayOfWeek++;
+    
   if(result.dayOfWeek > 7)
-    result.dayOfWeek = result.dayOfWeek - 7;
+    result.dayOfWeek = 7;
     
   result.year = t->tm_year + 1900;  
 
@@ -588,8 +591,15 @@ RTCTime RealtimeClock::getTime()
 //--------------------------------------------------------------------------------------------------------------------------------------
 const char* RealtimeClock::getDayOfWeekStr(const RTCTime& t)
 {
+  uint8_t idx = t.dayOfWeek;
+  if(idx > 0)
+    --idx;
+
+  if(idx > 6)
+    idx = 6;
+    
   static const char* dow[] = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
-  return dow[t.dayOfWeek-1];
+  return dow[idx];
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 const char* RealtimeClock::getTimeStr(const RTCTime& t)
