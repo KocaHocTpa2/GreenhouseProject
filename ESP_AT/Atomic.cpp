@@ -138,7 +138,10 @@ bool __connected = false;
 void onStationConnected(const WiFiEventStationModeConnected& evt) 
 {
   if(!__connected)
+  {
+    ntpUDP.begin(NTP_DEFAULT_LOCAL_PORT);
     Events.raise("WIFI CONNECTED\r\n"); 
+  }
         
   __connected = true;
 }
@@ -146,7 +149,10 @@ void onStationConnected(const WiFiEventStationModeConnected& evt)
 void onStationDisconnected(const WiFiEventStationModeDisconnected& evt) 
 {
   if(__connected)
+  {
+    ntpUDP.stop();
     Events.raise("WIFI DISCONNECT\r\n");     
+  }
 
   __connected = false; 
 }

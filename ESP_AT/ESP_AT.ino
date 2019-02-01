@@ -26,7 +26,15 @@ String apName;
 String apPassword;
 WiFiMode_t cwMode = WIFI_OFF;
 uint8_t statusHelper = 0;
-//uint32_t segmentID = 0;
+
+// NTP related
+WiFiUDP ntpUDP;
+int32_t timezoneOffset = 0;
+String ntpServer;
+int ntpPort = 123;
+uint8_t ntpPacket[NTP_PACKET_SIZE];
+#define SEVENZYYEARS 2208988800UL
+
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
 SerialCommand* commandStream = NULL;
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -214,6 +222,72 @@ void CWJAP_TEST(const char* command)
       });
  
   
+}
+//----------------------------------------------------------------------------------------------------------------------------------------------------------
+void sendNTPPacket()
+{
+ // set all bytes in the buffer to 0
+  memset(ntpPacket, 0, NTP_PACKET_SIZE);
+  // Initialize values needed to form NTP request
+  // (see URL above for details on the packets)
+  ntpPacket[0] = 0b11100011;   // LI, Version, Mode
+  ntpPacket[1] = 0;     // Stratum, or type of clock
+  ntpPacket[2] = 6;     // Polling Interval
+  ntpPacket[3] = 0xEC;  // Peer Clock Precision
+  // 8 bytes of zero for Root Delay & Root Dispersion
+  ntpPacket[12]  = 49;
+  ntpPacket[13]  = 0x4E;
+  ntpPacket[14]  = 49;
+  ntpPacket[15]  = 52;
+
+  // all NTP fields have been given values, now
+  // you can send a packet requesting a timestamp:
+  ntpUDP.beginPacket(ntpServer.c_str(), ntpPort); //NTP requests are to port 123
+  ntpUDP.write(ntpPacket, NTP_PACKET_SIZE);
+  ntpUDP.endPacket();  
+}
+//----------------------------------------------------------------------------------------------------------------------------------------------------------
+void NTPTIME(const char* command)
+{
+  CRITICAL_SECTION;
+
+   char* arg = commandStream->next(); // NTP server
+   if(!arg)
+   {
+    echo(command, AT_ERROR);
+    return;
+   }  
+
+   ntpServer = arg;
+   unQuote(ntpServer);
+
+   arg = commandStream->next(); // NTP port
+   if(!arg)
+   {
+    echo(command, AT_ERROR);
+    return;
+   }
+
+   ntpPort = atoi(arg);
+
+   arg = commandStream->next(); // time offset (seconds)
+   if(!arg)
+   {
+    echo(command, AT_ERROR);
+    return;
+   }
+
+   timezoneOffset = atoi(arg);
+
+   /*
+   Serial.print("ntpServer="); Serial.println(ntpServer);
+   Serial.print("ntpPort="); Serial.println(ntpPort);
+   Serial.print("timezoneOffset="); Serial.println(timezoneOffset);
+   */
+
+   sendNTPPacket();
+
+   echo(command, AT_OK);
 }
 //----------------------------------------------------------------------------------------------------------------------------------------------------------
 void CWJAP_CUR(const char* command)
@@ -879,9 +953,9 @@ void setup()
   commandStream->addCommand("AT+CIPSENDBUF",CIPSENDBUF);
   commandStream->addCommand("AT+CIPSEND",CIPSENDBUF);
   commandStream->addCommand("AT+CSQ",CSQ);
+  commandStream->addCommand("AT+NTPTIME",NTPTIME);
   
-  DBGLN(F("Known commands inited."));
-  
+  DBGLN(F("Known commands inited."));  
 
   printReady(Serial);
   Serial.flush();
@@ -911,6 +985,26 @@ void loop()
     Events.update();
 
   Cipsend.update();
+
+  if(ntpUDP.parsePacket() == NTP_PACKET_SIZE)
+  {
+    // got NTP packet!
+     ntpUDP.read(ntpPacket, NTP_PACKET_SIZE);
+     unsigned long highWord = word(ntpPacket[40], ntpPacket[41]);
+     unsigned long lowWord = word(ntpPacket[42], ntpPacket[43]);
+     // combine the four bytes (two words) into a long integer
+     // this is NTP time (seconds since Jan 1 1900):
+     unsigned long secsSince1900 = highWord << 16 | lowWord;
+
+     unsigned long currentEpoc = secsSince1900 - SEVENZYYEARS;
+     currentEpoc += (timezoneOffset*60);
+
+     String message = "+NTPTIME:";
+     message += currentEpoc;
+     message += ENDLINE;
+
+     Events.raise(message.c_str(),message.length());
+  }
     
   delay(0);
 }

@@ -539,6 +539,23 @@ void CoreESPTransport::sendCommand(ESPCommands command)
     }
     break;
 
+    case cmdNTPTIME:
+    {
+      #ifdef WIFI_DEBUG
+        DEBUG_LOGLN(F("ESP: REQUEST NTP TIME..."));
+      #endif
+
+      String cmd = F("AT+NTPTIME=\"");
+      cmd += NTP_SERVER;
+      cmd += F("\",");
+      cmd += NTP_PORT;
+      cmd += ',';
+      cmd += NTP_TIMEZONE;
+
+      sendCommand(cmd);
+    }
+    break;
+
 
     case cmdCIFSR:
     {
@@ -870,6 +887,11 @@ void CoreESPTransport::processKnownStatusFromESP(const String& line)
    if(line == F("WIFI CONNECTED"))
    {
       flags.connectedToRouter = true;
+
+      #ifdef WIFI_TIME_SYNC
+        initCommandsQueue.push_back(cmdNTPTIME); // добавляем команду на соединение с NTP-сервером и получение с него времени
+      #endif // WIFI_TIME_SYNC
+      
       #ifdef WIFI_DEBUG
         DEBUG_LOGLN(F("ESP: connected to router!"));
       #endif
@@ -881,7 +903,26 @@ void CoreESPTransport::processKnownStatusFromESP(const String& line)
       #ifdef WIFI_DEBUG
         DEBUG_LOGLN(F("ESP: disconnected from router!"));
       #endif
-   }  
+   }
+   else
+   if(line.startsWith(F("+NTPTIME:")))
+   {
+      const char* str = line.c_str();
+      str += 9; // переходим за двоеточие
+
+      uint32_t ntpTime = atol(str);
+
+      #ifdef WIFI_DEBUG
+        DEBUG_LOG(F("ESP: CATCH NTPTIME: "));
+        DEBUG_LOGLN(String(ntpTime));
+      #endif
+
+      RTCTime tm;
+      tm = tm.maketime(ntpTime);
+
+      RealtimeClock rtc = MainController->GetClock();
+      rtc.setTime(tm);     
+   }
 }
 //--------------------------------------------------------------------------------------------------------------------------------------
 bool CoreESPTransport::checkIPD(const TransportReceiveBuffer& buff)
@@ -1274,6 +1315,17 @@ void CoreESPTransport::update()
                     sendCommand(cmdCheckModemHang);
                     
                   } // if
+                  #ifdef WIFI_TIME_SYNC
+                  else
+                  {
+                     static uint32_t ntpTimer = 0;
+                     if(millis() - ntpTimer > NTP_UPDATE_INTERVAL)
+                     {
+                        ntpTimer = millis();
+                        sendCommand(cmdNTPTIME);
+                     }
+                  }
+                  #endif // WIFI_TIME_SYNC
                   
                 } // else
                 
@@ -1308,6 +1360,15 @@ void CoreESPTransport::update()
                     
                   }
                   break; // cmdPING
+
+                  case cmdNTPTIME:
+                  {
+                    if(isKnownAnswer(thisCommandLine,knownAnswer))
+                    {
+                      machineState = espIdle; // переходим к следующей команде
+                    }
+                  }
+                  break; // cmdNTPTIME
 
                   case cmdCIFSR:
                   {
