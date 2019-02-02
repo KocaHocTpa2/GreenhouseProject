@@ -37,8 +37,8 @@ RTCTime RTCTime::maketime(uint32_t time)
   
   if(!result.dayOfWeek)
     result.dayOfWeek = 7;
-  else
-    result.dayOfWeek++;
+  //else
+  //  result.dayOfWeek++;
     
   if(result.dayOfWeek > 7)
     result.dayOfWeek = result.dayOfWeek - 7;
@@ -561,13 +561,16 @@ RTCTime RealtimeClock::getTime()
         if(wireInterface->requestFrom(DS3231Address, 7) == 7) // читаем 7 байт, начиная с регистра 0
         {
             t.second = bcd2dec(wireInterface->read() & 0x7F);
-            t.second = constrain(t.second,0,59);
+           if(t.second > 59)
+            t.second = 59;
             
             t.minute = bcd2dec(wireInterface->read());
-            t.minute = constrain(t.minute,0,59);
+            if(t.minute > 59)
+              t.minute = 59;
             
             t.hour = bcd2dec(wireInterface->read() & 0x3F);
-            t.hour = constrain(t.hour,0,23);
+            if(t.hour > 23)
+              t.hour = 23;
             
             t.dayOfWeek = bcd2dec(wireInterface->read());
             t.dayOfWeek = constrain(t.dayOfWeek,1,7);
