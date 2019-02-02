@@ -911,6 +911,10 @@ void CoreESPTransport::processKnownStatusFromESP(const String& line)
       str += 9; // переходим за двоеточие
 
       uint32_t ntpTime = atol(str);
+      
+      #ifdef YEAR_30_FIX
+       ntpTime -= 946684800ul;
+      #endif     
 
       #ifdef WIFI_DEBUG
         DEBUG_LOG(F("ESP: CATCH NTPTIME: "));

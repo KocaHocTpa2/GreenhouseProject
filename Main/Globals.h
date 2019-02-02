@@ -1,6 +1,4 @@
-#ifndef _GLOBALS_H
-#define _GLOBALS_H
-
+#pragma once
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // НАСТРОЙКИ ПРОШИВКИ
 // FIRMWARE SETTINGS
@@ -94,5 +92,7 @@
 #include "Configuration_Shared.h"
 
 //--------------------------------------------------------------------------------------------------------------------------------
-
+#if defined(USE_WIFI_MODULE) || defined(USE_SCENE_MODULE) || defined(USE_LOG_MODULE) || defined(USE_SMS_MODULE) || (defined(SENSORS_SETTINGS_ON_SD_ENABLED) && defined(USE_LCD_MODULE))
+ #define SD_USED
 #endif
+

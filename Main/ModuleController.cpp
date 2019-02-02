@@ -217,7 +217,7 @@ SdFile::dateTimeCallback(setFileDateTime);
 #endif
 
 
-#if  defined(USE_WIFI_MODULE) || defined(USE_SCENE_MODULE) || defined(USE_LOG_MODULE) || defined(USE_SMS_MODULE) || (defined(SENSORS_SETTINGS_ON_SD_ENABLED) && defined(USE_LCD_MODULE))
+#ifdef SD_USED
 
   WORK_STATUS.PinMode(SDCARD_CS_PIN,OUTPUT);
   WORK_STATUS.PinWrite(SDCARD_CS_PIN,HIGH);
