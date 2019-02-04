@@ -105,16 +105,43 @@ bool  PinModule::ExecCommand(const Command& command, bool wantAnswer)
     if(command.GetArgsCount() > 0)
     {
        String strNum = command.GetArg(0);
-       uint8_t pinNumber = strNum.toInt();
-       uint8_t currentState = GetPinState(pinNumber);
-       
-       if(wantAnswer) // чтобы не работать с памятью, когда от нас не ждут ответа
+       if(strNum == F("STATUS"))
        {
-        PublishSingleton = strNum;
-        PublishSingleton << PARAM_DELIMITER << (currentState == HIGH ? STATE_ON : STATE_OFF);
+         // запросили статус пина из карты пинов
+         if(command.GetArgsCount() > 1)
+         {
+            uint8_t pinNum = atoi(command.GetArg(1));
+            uint8_t byteNum = pinNum/8;
+            
+            if(byteNum <= 15)
+            {
+              uint8_t bitNum = pinNum%8;
+
+              ControllerState state = WORK_STATUS.GetState();
+              String pinState = STATE_OFF;
+              
+              if(state.PinsState[byteNum] & (1 << bitNum))
+                pinState = STATE_ON;
+
+              PublishSingleton.Flags.Status = true;
+              PublishSingleton = pinNum;
+              PublishSingleton  << PARAM_DELIMITER << pinState;
+            }
+         }
        }
-        
-       PublishSingleton.Flags.Status = true;
+       else
+       {
+           uint8_t pinNumber = strNum.toInt();
+           uint8_t currentState = GetPinState(pinNumber);
+           
+           if(wantAnswer) // чтобы не работать с памятью, когда от нас не ждут ответа
+           {
+            PublishSingleton = strNum;
+            PublishSingleton << PARAM_DELIMITER << (currentState == HIGH ? STATE_ON : STATE_OFF);
+           }
+            
+           PublishSingleton.Flags.Status = true;
+       }
     }
     
 
