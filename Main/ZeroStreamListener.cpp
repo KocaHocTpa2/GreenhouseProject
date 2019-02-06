@@ -394,6 +394,7 @@ bool  ZeroStreamListener::ExecCommand(const Command& command, bool wantAnswer)
           PublishSingleton << PARAM_DELIMITER << UniDispatcher.GetUniSensorsCount(uniLuminosity);
           PublishSingleton << PARAM_DELIMITER << UniDispatcher.GetUniSensorsCount(uniSoilMoisture);
           PublishSingleton << PARAM_DELIMITER << UniDispatcher.GetUniSensorsCount(uniPH);
+          PublishSingleton << PARAM_DELIMITER << UniDispatcher.GetUniSensorsCount(uniPinsMap);
           //TODO: Тут остальные типы датчиков указывать !!!
                      
         }
@@ -589,6 +590,7 @@ bool  ZeroStreamListener::ExecCommand(const Command& command, bool wantAnswer)
             MemWrite(addr++,0);
             addr++;
             MemWrite(addr++,0);
+            MemWrite(addr++,0); // сбрасываем данные по картам пинов также
 
           // говорим, что выполнили
           PublishSingleton = REG_SUCC;

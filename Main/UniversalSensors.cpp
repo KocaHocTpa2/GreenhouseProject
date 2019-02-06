@@ -16,6 +16,50 @@ UniScratchpadClass UniScratchpad; // наш пишичитай скратчпа�
 UniClientsFactory UniFactory; // наша фабрика клиентов
 UniRawScratchpad SHARED_SCRATCHPAD; // общий скратчпад для классов опроса модулей, висящих на линиях
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
+void ProcessPinsMap(uint8_t index, uint8_t* data)
+{
+  #ifdef UNI_DEBUG
+    DEBUG_LOGLN(F("Process PINS MAP!"));
+  #endif
+  
+  // проходим карту пинов, по 8 пинов на один модуль со слотом "карта пинов"
+  // выясняем кол-во возможных модулей
+  const uint8_t totalModulesAvailable = (128 - VIRTUAL_PIN_START_NUMBER)/8;
+
+  if(index >= totalModulesAvailable)// что-то пошло не так
+    return;
+  
+  uint16_t startIndex = VIRTUAL_PIN_START_NUMBER +(8ul*index);
+
+  if(startIndex > 120) // что-то пошло не так
+    return;
+
+  int endIndex = startIndex + 8;
+  if(endIndex > 128)
+    endIndex = 128;
+
+  // получаем первый байт, в котором и содержится статут пинов
+  uint8_t pinsState = *data;
+
+  // теперь проходим по карте пинов, и выставляем статусы
+  uint8_t shiftCounter = 0;
+  
+  for(uint8_t i=startIndex; i<endIndex;i++)
+  {
+    // сбрасываем нужный пин
+    WORK_STATUS.PinWrite(i,LOW);
+
+    // проверяем - если нужный бит в карте состояний установлен - пишем в виртуальный пин высокий уровень
+    if(pinsState & (1 << shiftCounter))
+    {
+      WORK_STATUS.PinWrite(i,HIGH);
+    }
+
+    shiftCounter++;
+  }
+  
+}
+//-------------------------------------------------------------------------------------------------------------------------------------------------------
 #ifdef USE_RS485_GATE
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
 UniRS485Gate::UniRS485Gate()
@@ -408,13 +452,6 @@ void UniRS485Gate::executeCommands(const RS485Packet& packet)
 void UniRS485Gate::writeToStream(Stream* s, const uint8_t* buffer, size_t len)
 {
    s->write(buffer,len);
-  /*
-  for(size_t i=0;i<len;i++)
-  {
-    s->write(buffer[i]);
-    yield(); // и пообновляем тут, чтобы буфера не протухли у ESP и SIM800
-  }
-  */
 }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
 void UniRS485Gate::sendControllerStatePacket()
@@ -1162,7 +1199,7 @@ void UniRS485Gate::Update(uint16_t dt)
    {
       _is_inited = true;
       // инициализируем очередь
-       for(byte sensorType=uniTemp;sensorType<=uniPH;sensorType++)
+       for(byte sensorType=uniTemp;sensorType<=uniPinsMap;sensorType++)
        {
          byte cnt = UniDispatcher.GetUniSensorsCount((UniSensorType) sensorType);
     
@@ -1279,6 +1316,9 @@ void UniRS485Gate::Update(uint16_t dt)
                         } // if                        
                         
                       }
+                      break;
+
+                      case uniPinsMap:
                       break;
                       
                     } // switch
@@ -1433,6 +1473,12 @@ void UniRS485Gate::Update(uint16_t dt)
                     // проверяем тип датчика, с которого читали показания
                     switch(sType)
                     {
+                      case uniPinsMap:
+                      {
+                        ProcessPinsMap(sIndex,readDataPtr);
+                      }
+                      break;
+                      
                       case uniTemp:
                       {
                         // температура
@@ -1850,6 +1896,12 @@ void SensorsUniClient::Update(UniRawScratchpad* scratchpad, bool isModuleOnline,
       
       if(ut == uniNone) // нет типа датчика
         continue;
+
+      if(ut == uniPinsMap) // слот с картой пинов
+      {
+        ProcessPinsMap(ourScratch->sensors[i].index,ourScratch->sensors[i].data);
+        continue;
+      }
       
       if(UniDispatcher.GetRegisteredStates(ut, ourScratch->sensors[i].index, states))
       {
@@ -2057,6 +2109,7 @@ UniRegDispatcher::UniRegDispatcher()
   currentLuminosityCount = 0;
   currentSoilMoistureCount = 0;
   currentPHCount = 0;
+  currentPinsMapCount = 0;
 
   hardCodedTemperatureCount = 0;
   hardCodedHumidityCount = 0;
@@ -2083,8 +2136,18 @@ bool UniRegDispatcher::AddUniSensor(UniSensorType type, uint8_t sensorIndex)
    switch(type)
   {
     case uniNone:  // нет датчика
-      return false;
+    return false;
     
+    case uniPinsMap:
+    {
+      if(sensorIndex < currentPinsMapCount) // попали в диапазон уже выданных
+        return false;
+
+      // добавляем ещё один датчик "карта пинов"
+      currentPinsMapCount++;
+      return true;
+    }
+\    
     case uniTemp:  // температурный датчик
       if(temperatureModule)
       {
@@ -2201,6 +2264,7 @@ bool UniRegDispatcher::AddUniSensor(UniSensorType type, uint8_t sensorIndex)
       } 
       else
         return false;
+
   } 
 
   return false;
@@ -2216,6 +2280,7 @@ uint8_t UniRegDispatcher::GetUniSensorsCount(UniSensorType type)
     case uniLuminosity: return currentLuminosityCount;
     case uniSoilMoisture: return currentSoilMoistureCount;
     case uniPH: return currentPHCount;
+    case uniPinsMap: return currentPinsMapCount;
   }
 
   return 0;  
@@ -2231,6 +2296,7 @@ uint8_t UniRegDispatcher::GetHardCodedSensorsCount(UniSensorType type)
     case uniLuminosity: return hardCodedLuminosityCount;
     case uniSoilMoisture: return hardCodedSoilMoistureCount;
     case uniPH: return hardCodedPHCount;
+    case uniPinsMap: return 0;
   }
 
   return 0;
@@ -2305,6 +2371,11 @@ void UniRegDispatcher::ReadState()
   val = MemRead(addr++);
   if(val != 0xFF)
     currentPHCount = val;
+
+  // читаем выданные индексы для карт пинов
+  val = MemRead(addr++);
+  if(val != 0xFF)
+    currentPinsMapCount = val;
    
 }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2391,6 +2462,7 @@ void UniRegDispatcher::SaveState()
   MemWrite(addr++,currentSoilMoistureCount);
   MemWrite(addr++,rfChannel);
   MemWrite(addr++,currentPHCount);
+  MemWrite(addr++,currentPinsMapCount);
 }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
 bool UniRegDispatcher::GetRegisteredStates(UniSensorType type, uint8_t sensorIndex, UniSensorState& resultStates)
@@ -2402,6 +2474,7 @@ bool UniRegDispatcher::GetRegisteredStates(UniSensorType type, uint8_t sensorInd
    switch(type)
    {
     case uniNone: return false;
+    case uniPinsMap: return false;
     
     case uniTemp: 
     {
@@ -2835,6 +2908,9 @@ void UniNRFGate::Update(uint16_t dt)
                 
               }
               break;
+
+              case uniPinsMap:
+              break;
               
             } // switch
 
@@ -3233,6 +3309,9 @@ void UniLoRaGate::Update(uint16_t dt)
                 } // if                        
                 
               }
+              break;
+
+              case uniPinsMap:
               break;
               
             } // switch

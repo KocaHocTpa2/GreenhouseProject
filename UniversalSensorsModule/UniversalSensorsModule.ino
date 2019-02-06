@@ -89,7 +89,7 @@ RS-485 работает через аппаратный UART (RX0 и TX0 ард�
  */
 #define LORA_SS_PIN 10 // пин SS для LoRa
 #define LORA_RESET_PIN 9 // пин Reset для LoRa
-#define LORA_FREQUENCY 433E6 // частота работы (433E6, 868E6, 915E6)
+#define LORA_FREQUENCY 433E6 // частота работы (433E6, 866E6, 915E6)
 #define LORA_TX_POWER 17 // мощность передатчика (1 - 17)
 
 //----------------------------------------------------------------------------------------------------------------
@@ -101,13 +101,33 @@ RS-485 работает через аппаратный UART (RX0 и TX0 ард�
 #define RS485_DE_PIN 3 //v номер пина, на котором будем управлять направлением приём/передача по RS-485
 
 //----------------------------------------------------------------------------------------------------------------
+// привязки карты пинов для слота типа mstPinsMap - 8 пинов, если в записи указано -1 - нет привязки пина.
+// состояния пинов передаются на контроллер, как прописаны, при регистрации модуля на контроллере в поле 
+// "индекс датчика" прописывается сдвиг в карте виртуальных пинов. Таким образом, можно получить состояние
+// пинов модуля в карте виртуальных пинов контроллера. Например, если у нас индекс такого датчика 1, и виртуальные
+// пины начинаются с индекса 80, то наши пины - с 88-го, 8 записей. Таким образом, максимальное кол-во таких модулей
+// (со слотом "карта пинов") составляет 6 штук, поскольку у нас виртуальных пинов 128-80 = 48 штук, 48/8 = 6.
+//----------------------------------------------------------------------------------------------------------------
+#pragma pack(push,1)
+int8_t PINS_MAP[8] = { // в примере указано, что мы следим за тремя пинами - А1, А2, А3
+  A1,
+  A2,
+  A3,
+  -1,
+  -1,
+  -1,
+  -1,
+  -1,  
+};
+#pragma pack(pop)
+//----------------------------------------------------------------------------------------------------------------
 // настройки датчиков для модуля, МЕНЯТЬ ЗДЕСЬ!
 //----------------------------------------------------------------------------------------------------------------
 const SensorSettings Sensors[3] = {
 
-{mstDS18B20,A1,0}, // DS18B20 на пине A1
-{mstDS18B20,A2,0}, // DS18B20 на пине A2
-{mstSi7021,0,0} // датчик температуры и влажности Si7021 на шине I2C  
+{mstNone,0,0}, // DS18B20 на пине A1
+{mstNone,0,0}, // DS18B20 на пине A2
+{mstPinsMap,0,0} // карта пинов 
 /* 
  
  поддерживаемые типы датчиков: 
@@ -128,6 +148,8 @@ const SensorSettings Sensors[3] = {
   {mstFrequencySoilMoistureMeter,A5, 0} - частотный датчик влажности почвы на аналоговом пине A5
   {mstFrequencySoilMoistureMeter,A4, 0} - частотный датчик влажности почвы на аналоговом пине A4
   {mstFrequencySoilMoistureMeter,A3, 0} - частотный датчик влажности почвы на аналоговом пине A3
+
+  {mstPinsMap,0,0} - карта состояния пинов, МОЖЕТ БЫТЬ ТОЛЬКО ОДНА НА МОДУЛЬ, ПРИВЯЗКИ ПИНОВ - В НАСТРОЙКЕ PINS_MAP
   
 
   если в слоте записано
@@ -447,6 +469,9 @@ byte GetSensorType(const SensorSettings& sett)
 
     case mstPHMeter:
       return uniPH;
+
+    case mstPinsMap:
+      return uniPinsMap;
     
   }
 
@@ -475,6 +500,12 @@ void SetDefaultValue(const SensorSettings& sett, byte* data)
     {
     long lum = NO_LUMINOSITY_DATA;
     memcpy(data,&lum,sizeof(lum));
+    }
+    break;
+
+    case mstPinsMap:
+    {
+      memset(data,0,4);
     }
     break;
 
@@ -528,6 +559,9 @@ void* InitSensor(const SensorSettings& sett)
 
     case mstSHT10:
       return NULL;
+
+    case mstPinsMap:
+      return InitPinsMap(sett);
 
     case mstPHMeter: // инициализируем структуру для опроса pH
     {      
@@ -639,6 +673,18 @@ void ReadROM()
 
 }
 //----------------------------------------------------------------------------------------------------------------
+void WakeUpPinsMap()
+{
+  for(size_t i=0;i<sizeof(PINS_MAP);i++)
+  {
+    if(PINS_MAP[i] == -1)
+      continue;
+
+      Pin pin(PINS_MAP[i]);
+      pin.inputMode();
+  }
+}
+//----------------------------------------------------------------------------------------------------------------
 void WakeUpSensor(const SensorSettings& sett, void* sensorDefinedData)
 {  
   // просыпаем сенсоры
@@ -676,6 +722,12 @@ void WakeUpSensor(const SensorSettings& sett, void* sensorDefinedData)
     case mstDHT11:
     case mstDHT22:
     case mstSHT10:
+    break;
+
+    case mstPinsMap:
+    {
+      WakeUpPinsMap();
+    }
     break;
 
     case mstFrequencySoilMoistureMeter:
@@ -759,6 +811,20 @@ void* InitSi7021(const SensorSettings& sett) // инициализируем д�
 void* InitFrequencySoilMoistureMeter(const SensorSettings& sett)
 {
     UNUSED(sett);
+    return NULL;  
+}
+//----------------------------------------------------------------------------------------------------------------
+void* InitPinsMap(const SensorSettings& sett)
+{
+    UNUSED(sett);
+    for(size_t i=0;i<sizeof(PINS_MAP);i++)
+    {
+      if(PINS_MAP[i] == -1)
+        continue;
+
+      Pin pin(PINS_MAP[i]);
+      pin.inputMode();
+    }
     return NULL;  
 }
 //----------------------------------------------------------------------------------------------------------------
@@ -943,6 +1009,29 @@ void ReadFrequencySoilMoistureMeter(const SensorSettings& sett, void* sensorDefi
    s->data[0] = moistureInt/100;
    s->data[1] = moistureInt%100;
  
+}
+//----------------------------------------------------------------------------------------------------------------
+void ReadPinsMap(const SensorSettings& sett, void* sensorDefinedData, struct sensor* s) // читаем карту пинов
+{
+  UNUSED(sett);
+  UNUSED(sensorDefinedData);
+
+  uint8_t pMap = 0;
+  
+  for(size_t i=0;i<sizeof(PINS_MAP);i++)
+  {
+    if(PINS_MAP[i] == -1)
+      continue;
+
+    Pin pin(PINS_MAP[i]);
+    if(pin.read())
+    {
+      pMap |= (1 << i);
+    }
+  }
+  
+  memcpy(s->data,&pMap,sizeof(pMap));
+
 }
 //----------------------------------------------------------------------------------------------------------------
 void ReadMax44009(const SensorSettings& sett, void* sensorDefinedData, struct sensor* s) // читаем данные с датчика освещённости MAX44009
@@ -1138,6 +1227,10 @@ void ReadSensor(const SensorSettings& sett, void* sensorDefinedData, struct sens
     ReadDS18B20(sett,s);
     break;
 
+    case mstPinsMap:
+    ReadPinsMap(sett,sensorDefinedData,s);
+    break;
+
     case mstBH1750:
     ReadBH1750(sett,sensorDefinedData,s);
     break;
@@ -1291,6 +1384,7 @@ void MeasureSensor(const SensorSettings& sett,void* sensorDefinedData) // зап
     case mstDHT22:
     case mstFrequencySoilMoistureMeter:
     case mstSHT10:
+    case mstPinsMap:
     break;
   }  
 }
@@ -1338,6 +1432,7 @@ void UpdateSensor(const SensorSettings& sett,void* sensorDefinedData, unsigned l
     case mstDHT22:
     case mstFrequencySoilMoistureMeter:
     case mstSHT10:
+    case mstPinsMap:
     break;
   }  
 }
@@ -1840,10 +1935,7 @@ void loop()
 
           #ifdef _DEBUG
             Serial.println(F("Sensors data readed."));
-          #endif     
-        
-
-        
+          #endif       
         
              // теперь усыпляем все датчики
              PowerDownSensors();

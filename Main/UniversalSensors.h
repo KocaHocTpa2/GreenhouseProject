@@ -180,7 +180,8 @@ typedef enum
   uniHumidity = 2, // влажность (первые два байта), температура (вторые два байта) 
   uniLuminosity = 3, // освещённость, 4 байта
   uniSoilMoisture = 4, // влажность почвы (два байта)
-  uniPH = 5 // pH (два байта)
+  uniPH = 5, // pH (два байта)
+  uniPinsMap = 6, // карта пинов (4 байта)
   
 } UniSensorType; // тип датчика
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -254,6 +255,7 @@ class UniRegDispatcher
     uint8_t currentLuminosityCount;
     uint8_t currentSoilMoistureCount;
     uint8_t currentPHCount;
+    uint8_t currentPinsMapCount;
 
     uint8_t rfChannel; // номер канала для nRF
   
