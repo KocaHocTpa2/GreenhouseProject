@@ -2147,7 +2147,7 @@ bool UniRegDispatcher::AddUniSensor(UniSensorType type, uint8_t sensorIndex)
       currentPinsMapCount++;
       return true;
     }
-\    
+    
     case uniTemp:  // температурный датчик
       if(temperatureModule)
       {
